@@ -1,0 +1,36 @@
+{
+  "name": "try",
+  "version": "1.0.0",
+  "description": "",
+  "main": "webpack.config.js",
+  "engines": {
+    "npm": "6.10.3",
+    "node": "11.12.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "ts-node ./src/index.ts",
+    "start": "tsc && node dist/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Marzocco-Hunter/zidane.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/julesboulay/zidane/issues"
+  },
+  "homepage": "https://github.com/julesboulay/zidane#readme",
+  "devDependencies": {},
+  "dependencies": {
+    "@types/node": "^12.0.0",
+    "@types/puppeteer": "^2.0.1",
+    "fs": "0.0.1-security",
+    "nodemon": "^1.19.0",
+    "puppeteer": "^3.0.0",
+    "ts-loader": "^6.0.0",
+    "ts-node": "^8.1.0",
+    "typescript": "^3.4.5"
+  }
+}
