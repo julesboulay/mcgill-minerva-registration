@@ -34,6 +34,12 @@ const CMND_LINE = `\n-----------------------------------------------------------
 /***********************************************************************
  * Helpers
  */
+const formatNumber = (n: number, digits: number): string => {
+  let zeros = "";
+  for (let i = 0; i < digits; i++) zeros += "0";
+  return (zeros + n).slice(-digits);
+};
+
 const internetIsConnected = (): Promise<boolean> => {
   return new Promise<boolean>(function (resolve) {
     lookup("google.com", function (error, address, family) {
@@ -49,10 +55,11 @@ const findSelector = (error: TimeoutError): string => {
 };
 
 const timenow = (): string => {
+  const f = (n: number): string => formatNumber(n, 2);
   const date = new Date();
   return (
-    `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}` +
-    ` @ ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`
+    `${f(date.getDate())}/${f(date.getMonth() + 1)}/${f(date.getFullYear())}` +
+    ` @ ${f(date.getHours())}:${f(date.getMinutes())}:${f(date.getSeconds())}`
   );
 };
 
@@ -69,6 +76,7 @@ export {
   SELECTORS,
   SELECTORS_MAP,
   CMND_LINE,
+  formatNumber,
   internetIsConnected,
   findSelector,
   waitfor,

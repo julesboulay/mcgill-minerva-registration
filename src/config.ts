@@ -3,8 +3,8 @@ import { Config } from "./types";
 /***********************************************************************
  * CONFIG
  */
-
 const config: Config = {
+  /* Minerva credentials */
   credentials: {
     username: ``,
     password: ``,
@@ -21,6 +21,7 @@ const config: Config = {
     crn: `` /* CRN of course */,
   },
 
+  /* Path to pdfs folder where you want pdfs to be stored (screenshot of page upon error) */
   pdfs: `./pdfs`,
 
   errorsTolerated: 100 /* also increasing minutes between retries */,

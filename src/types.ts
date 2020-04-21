@@ -12,12 +12,6 @@ type Registration = {
   crn: string;
 };
 
-type Counts = {
-  errors: number;
-  logins: number;
-  attempts: number;
-};
-
 type Config = {
   credentials: Credentials;
   registration: Registration;
@@ -28,6 +22,12 @@ type Config = {
   timeout: number /* navigation timeout (ms) */;
   timeoutBetweenAttempts: number /* (secs) */;
   maxTimeoutBetweenErrors: number /* (mins) */;
+};
+
+type Counts = {
+  errors: number;
+  logins: number;
+  attempts: number;
 };
 
 class LoggedOutError extends Error {
@@ -47,8 +47,8 @@ class CredentialsError extends Error {
 export {
   Credentials,
   Registration,
-  Counts,
   Config,
+  Counts,
   LoggedOutError,
   CredentialsError,
 };

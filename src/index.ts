@@ -1,16 +1,17 @@
 import puppeteer, { Page } from "puppeteer";
+import { TimeoutError } from "puppeteer/Errors";
+
 import { Config, LoggedOutError, Counts, CredentialsError } from "./types";
+import { config } from "./config";
 import {
   SELECTORS,
   MINERVA_URL,
+  CMND_LINE,
   waitfor,
   timenow,
-  CMND_LINE,
   findSelector,
   internetIsConnected,
 } from "./util";
-import { config } from "./config";
-import { TimeoutError } from "puppeteer/Errors";
 
 /**
  * Checks if user has been logged out.
