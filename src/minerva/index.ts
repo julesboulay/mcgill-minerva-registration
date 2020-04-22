@@ -7,14 +7,17 @@ import {
   Times,
   CriticalError,
   MinervaError,
+  PDF,
 } from "./types";
 import { CMND_LINE, waitfor, internetNotConnected, timenow } from "./util";
 import MinervaHandler from "./handler";
+import PDFsHandler from "./pdf";
 
 class MinervaRegisterer {
   private config: MinervaConfig;
   private counts: Counts;
   private hdlr: MinervaHandler;
+  private pdfHndlr: PDFsHandler;
 
   /**
    * Constructor.
@@ -23,6 +26,7 @@ class MinervaRegisterer {
   constructor(config: MinervaConfig, debug?: boolean) {
     this.config = config;
     this.hdlr = new MinervaHandler(config, debug);
+    this.pdfHndlr = new PDFsHandler(config.dirPath);
     this.counts = {
       logins: 0,
       attempts: 0,
@@ -41,6 +45,7 @@ class MinervaRegisterer {
     const { counts, config } = this;
     const { errorsToleratedLimit, timeoutBetweenErrors } = config;
     await this.hdlr.init();
+    await this.pdfHndlr.init();
 
     /* Retry Registration Until Successfull or Error Limit Reached */
     let registered: boolean = false;
@@ -63,7 +68,8 @@ class MinervaRegisterer {
         else if (error instanceof TimeoutError) return false;
 
         /* Print & Save (as pdf of current page) Error */
-        await this.hdlr.savePage("error", ++counts.errors);
+        if (error instanceof Error)
+          await this.savePDF("error", ++counts.errors, error.stack);
         console.error(error);
 
         /* Handle Critical Error */
@@ -86,7 +92,7 @@ class MinervaRegisterer {
     }
 
     console.info(`-- Successfully Registered --`);
-    await this.hdlr.savePage("success", 1);
+    await this.savePDF("error", ++counts.errors, config.registration.crn);
     return registered;
   }
 
@@ -125,6 +131,21 @@ class MinervaRegisterer {
     }
 
     return successfull;
+  }
+
+  /**
+   * Save new PDF file & info.
+   * @param ftype
+   * @param count
+   * @param content
+   */
+  public async savePDF(
+    ftype: PDF,
+    count: number,
+    content: string
+  ): Promise<void> {
+    await this.hdlr.savePage(ftype, count);
+    await this.pdfHndlr.savePDFinfo(ftype, count, content);
   }
 }
 

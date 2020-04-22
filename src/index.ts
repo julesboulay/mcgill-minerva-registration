@@ -4,8 +4,8 @@ import EmailService from "./sendgrid";
 
 /**
  * TODO
- * - store json with PDF info - error trace
  * - support multiple CRNs
+ * - test email service
  */
 
 /**

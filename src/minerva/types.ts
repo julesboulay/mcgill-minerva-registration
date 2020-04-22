@@ -20,7 +20,7 @@ type MinervaConfig = {
   readonly credentials: Credentials;
   readonly registration: Registration;
 
-  readonly pdfs: string;
+  readonly dirPath: string;
 
   readonly timeout: number /* navigation timeout (ms) */;
   readonly timeoutBetweenAttempts: number /* (secs) */;
@@ -38,7 +38,19 @@ type Counts = {
 /**
  * Types - Util
  */
-type PDFs = "success" | "error";
+type PDF = "success" | "error";
+type PDFinfo = {
+  errors: {
+    filename: string;
+    timestamp: string;
+    stack: string;
+  }[];
+  registrations: {
+    filename: string;
+    timestamp: string;
+    crn: string;
+  }[];
+};
 enum Times {
   Sec = 1000,
   Min = 60 * 1000,
@@ -85,12 +97,13 @@ class CriticalError extends MinervaError {
 }
 
 export {
-  PDFs,
   Times,
   Credentials,
   Registration,
   MinervaConfig,
   Counts,
+  PDF,
+  PDFinfo,
   MinervaError,
   LoggedOutError,
   CredentialsError,

@@ -45,7 +45,7 @@ const localConfig: Config = {
      * - pdfs: Path to pdfs folder where pdfs are to be stored (screenshot of page
      * upon error and/or screenshot of page upon successfull registration).
      */
-    pdfs: `./pdfs`,
+    dirPath: `./pdfs`,
 
     /**
      * - timeout: Before navigation timeout (in miliseconds)
@@ -70,7 +70,7 @@ const localConfig: Config = {
    * - fromEmail: email from
    */
   sendgrid: {
-    enable: true,
+    enable: false,
     apiKey: ``,
     toEmail: ``,
     fromEmail: ``,
@@ -107,7 +107,7 @@ function envConfig(): Config {
             termStr: ``,
             crn: crn,
           },
-          pdfs: `./pdfs`,
+          dirPath: `./pdfs`,
           timeout: 5 * 1000,
           timeoutBetweenAttempts: 7 * 60,
           timeoutBetweenErrors: 2,
@@ -133,7 +133,7 @@ function envConfig(): Config {
             termStr: ``,
             crn: ``,
           },
-          pdfs: ``,
+          dirPath: ``,
           timeout: 0,
           timeoutBetweenAttempts: 0,
           timeoutBetweenErrors: 0,

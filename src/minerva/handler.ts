@@ -1,6 +1,6 @@
 import puppeteer, { Page, Browser } from "puppeteer";
 import { TimeoutError } from "puppeteer/Errors";
-import { MinervaConfig, CredentialsError, PDFs } from "./types";
+import { MinervaConfig, CredentialsError, PDF } from "./types";
 import { SELECTORS, MINERVA_URL } from "./util";
 
 class MinervaHandler {
@@ -170,15 +170,15 @@ class MinervaHandler {
    * @param ftype
    * @param count
    */
-  public async savePage(ftype: PDFs, count: number): Promise<void> {
-    const { pdfs } = this.config;
+  public async savePage(ftype: PDF, count: number): Promise<void> {
+    const { dirPath } = this.config;
     let path: string = ``;
     switch (ftype) {
       case "error":
-        path = `${pdfs}/error${count}.pdf`;
+        path = `${dirPath}/error${count}.pdf`;
         break;
       case "success":
-        path = `${pdfs}/error${count}.pdf`;
+        path = `${dirPath}/success${count}.pdf`;
         break;
       default:
     }
