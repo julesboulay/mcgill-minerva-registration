@@ -18,9 +18,10 @@ const SELECTORS = {
   SUBMIT_TERM: `body > div.pagebodydiv > form > input[type=submit]`,
 
   CRN: `#crn_id1`,
-  CRN_SUBMIT_23: `body > div.pagebodydiv > form > input[type=submit]:nth-child(23)`,
-  CRN_SUBMIT_26: `body > div.pagebodydiv > form > input[type=submit]:nth-child(26)`,
+  CRN_SUBMIT: `body > div.pagebodydiv > form > input[type=submit]:nth-child`,
   REGISTRATION_ERRORS: `body > div.pagebodydiv > form > table.datadisplaytable`,
+
+  REGISTRATION_LIMIT_ERROR: `body > div.pagebodydiv > div.infotextdiv > table > tbody > tr > td:nth-child(2) > span`,
 };
 const SELECTORS_MAP: { [key: string]: string } = Object.keys(SELECTORS).reduce(
   (result: { [key: string]: string }, key) => {

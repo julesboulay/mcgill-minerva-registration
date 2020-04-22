@@ -3,7 +3,8 @@ import { Config } from "./types";
 /***********************************************************************
  * CONFIG
  */
-const config: Config = {
+
+const localConfig: Config = {
   /* Minerva credentials */
   credentials: {
     username: ``,
@@ -21,13 +22,93 @@ const config: Config = {
     crn: `` /* CRN of course */,
   },
 
+  sendGrid: {
+    enable: true,
+    apiKey: ``,
+    email: ``,
+  },
+
   /* Path to pdfs folder where you want pdfs to be stored (screenshot of page upon error) */
   pdfs: `./pdfs`,
 
-  errorsTolerated: 100 /* also increasing minutes between retries */,
   timeout: 3 * 1000 /* before navigation timeout (miliseconds) */,
-  timeoutBetweenAttempts: 30 /* between registration attempt (secs) */,
-  maxTimeoutBetweenErrors: 5 /* between errors (mins) */,
+  timeoutBetweenAttempts: 5 /* between registration attempt (secs) */,
+  timeoutBetweenErrors: 2 /* between errors (mins) */,
+  errorsToleratedLimit: 100 /* number of errors tolerable before shuting down */,
 };
 
-export { config };
+/**
+ * Sets up config for Development or Production envs
+ */
+function envConfig(): Config {
+  const { NODE_ENV = "development" } = process.env;
+
+  switch (NODE_ENV) {
+    case "development":
+      return localConfig;
+
+    case "production":
+      const {
+        username = "",
+        password = "",
+        term = "",
+        crn = "",
+        sendGridApiKey = "",
+        sendGridEmail = "",
+      } = process.env;
+      return {
+        credentials: {
+          username: username,
+          password: password,
+        },
+
+        registration: {
+          term: term,
+          termStr: ``,
+          crn: crn,
+        },
+
+        sendGrid: {
+          enable: false,
+          apiKey: sendGridApiKey,
+          email: sendGridEmail,
+        },
+
+        pdfs: `./pdfs`,
+
+        timeout: 3 * 1000,
+        timeoutBetweenAttempts: 5 * 60,
+        timeoutBetweenErrors: 2,
+        errorsToleratedLimit: 100,
+      };
+
+    default:
+      return {
+        credentials: {
+          username: ``,
+          password: ``,
+        },
+
+        registration: {
+          term: ``,
+          termStr: ``,
+          crn: ``,
+        },
+
+        sendGrid: {
+          enable: false,
+          apiKey: ``,
+          email: ``,
+        },
+
+        pdfs: `./pdfs`,
+
+        timeout: 0,
+        timeoutBetweenAttempts: 0,
+        timeoutBetweenErrors: 0,
+        errorsToleratedLimit: 0,
+      };
+  }
+}
+
+export default envConfig;

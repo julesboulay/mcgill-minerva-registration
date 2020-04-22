@@ -1,27 +1,35 @@
 /***********************************************************************
  * TYPES
  */
+
 type Credentials = {
-  username: string;
-  password: string;
+  readonly username: string;
+  readonly password: string;
 };
 
 type Registration = {
-  term: string;
-  termStr: "Fall" | "Winter" | "Summer" | ``;
-  crn: string;
+  readonly term: string;
+  readonly termStr: "Fall" | "Winter" | "Summer" | ``;
+  readonly crn: string;
+};
+
+type SendGrid = {
+  readonly enable: boolean;
+  readonly apiKey: string;
+  readonly email: string;
 };
 
 type Config = {
-  credentials: Credentials;
-  registration: Registration;
+  readonly credentials: Credentials;
+  readonly registration: Registration;
+  readonly sendGrid: SendGrid;
 
-  pdfs: string;
+  readonly pdfs: string;
 
-  errorsTolerated: number;
-  timeout: number /* navigation timeout (ms) */;
-  timeoutBetweenAttempts: number /* (secs) */;
-  maxTimeoutBetweenErrors: number /* (mins) */;
+  readonly timeout: number /* navigation timeout (ms) */;
+  readonly timeoutBetweenAttempts: number /* (secs) */;
+  readonly timeoutBetweenErrors: number /* (mins) */;
+  readonly errorsToleratedLimit: number;
 };
 
 type Counts = {
@@ -44,11 +52,20 @@ class CredentialsError extends Error {
   }
 }
 
+class AttemptsLimitError extends Error {
+  constructor(public message: string) {
+    super();
+    Object.setPrototypeOf(this, AttemptsLimitError.prototype);
+  }
+}
+
 export {
   Credentials,
   Registration,
+  SendGrid,
   Config,
   Counts,
   LoggedOutError,
   CredentialsError,
+  AttemptsLimitError,
 };
