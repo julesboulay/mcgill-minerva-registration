@@ -6,7 +6,7 @@ import {
   CredentialsError,
   Times,
   CriticalError,
-  MinervaError,
+  RegistrationError,
 } from "./types";
 import { CMND_LINE, waitfor, internetNotConnected, timenow } from "./util";
 import MinervaHandler from "./handler";
@@ -37,7 +37,7 @@ class MinervaRegisterer {
    * logouts or network interuptions, system is put to sleep for specified time.
    */
   public async start(): Promise<boolean> {
-    console.info(`-- Starting Minerva Registerer --`);
+    console.info(`-- Starting McGill Minerva Registration System --`);
     const { counts, config } = this;
     const { errorsToleratedLimit, timeoutBetweenErrors, registration } = config;
     await this.hdlr.init();
@@ -59,21 +59,25 @@ class MinervaRegisterer {
        */
       registered = await this.register().catch(async (error) => {
         /* Handle Logout & Timeout Error */
-        if (error instanceof LoggedOutError) return false;
-        else if (error instanceof TimeoutError) return false;
+        if (error instanceof LoggedOutError) {
+          console.error(error);
+          return false;
+        } else if (error instanceof TimeoutError) {
+          console.error(error);
+          return false;
+        }
 
         /* Print & Save (as pdf of current page) Error */
         if (error instanceof Error)
           await this.hdlr.saveState("error", ++counts.errors, error.stack);
-        console.error(error);
 
         /* Handle Critical Error */
         if (error instanceof CredentialsError) {
           await this.hdlr.destroy();
-          throw new CriticalError(`Incorrect Credentials.`, error);
-        } else if (error instanceof MinervaError) {
+          throw new CriticalError(`Incorrect Credentials.`, error.stack);
+        } else if (error instanceof RegistrationError) {
           await this.hdlr.destroy();
-          throw new CriticalError(`Minerva Internal Error.`, error);
+          throw new CriticalError(`Minerva Internal Error.`, error.stack);
         } else if (counts.errors > errorsToleratedLimit) {
           await this.hdlr.destroy();
           throw new CriticalError(`Error Limit Reached.`, error);

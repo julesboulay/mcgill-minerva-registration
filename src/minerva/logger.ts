@@ -2,7 +2,7 @@ import fs from "fs";
 import { PDF, PDFinfo } from "./types";
 import { timenow } from "./util";
 
-const makeDir = async (dirPath: string) => {
+const makeDir = (dirPath: string) => {
   return new Promise<void>(function (resolve, reject) {
     fs.exists(dirPath, (exits) => {
       if (exits) return resolve();
@@ -15,11 +15,10 @@ const makeDir = async (dirPath: string) => {
   });
 };
 
-const deleteFilesInDir = async (dirPath: string): Promise<void> => {
+const deleteFilesInDir = (dirPath: string): Promise<void> => {
   return new Promise<void>(function (resolve, reject) {
     fs.readdir(dirPath, (error, files) => {
       if (error) return reject(error);
-      console.log(files);
 
       for (const file of files)
         fs.unlink(`${dirPath}/${file}`, (error) => {
@@ -31,7 +30,7 @@ const deleteFilesInDir = async (dirPath: string): Promise<void> => {
   });
 };
 
-const readFile = async (filepath: string): Promise<PDFinfo> => {
+const readFile = (filepath: string): Promise<PDFinfo> => {
   return new Promise<PDFinfo>(function (resolve, reject) {
     fs.readFile(filepath, (error, data) => {
       if (error) return reject(error);
@@ -41,7 +40,7 @@ const readFile = async (filepath: string): Promise<PDFinfo> => {
   });
 };
 
-const writeFile = async (filepath: string, data: string): Promise<void> => {
+const writeFile = (filepath: string, data: string): Promise<void> => {
   return new Promise<void>(function (resolve, reject) {
     fs.writeFile(filepath, data, (error) => {
       if (error) return reject(error);
@@ -104,7 +103,7 @@ class Logger {
           htmlfile,
         });
         const errordata = JSON.stringify(info, undefined, 4);
-        return await writeFile(this.jsonfilepath, errordata);
+        await writeFile(this.jsonfilepath, errordata);
 
       case "success":
         info.registrations.push({
@@ -113,7 +112,7 @@ class Logger {
           crn: content,
         });
         const successdata = JSON.stringify(info, undefined, 4);
-        return await writeFile(this.jsonfilepath, successdata);
+        await writeFile(this.jsonfilepath, successdata);
 
       default:
     }

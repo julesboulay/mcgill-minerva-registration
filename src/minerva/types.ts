@@ -62,37 +62,36 @@ enum Times {
  * Types - Errors
  */
 
+const errorSeperator = `\n--- STACK ---\n`;
 class MinervaError extends Error {
-  constructor(public message: string, public parent?: Error) {
+  constructor(public message: string, parentstack?: string) {
     super(message);
-    if (parent) this.stack = `${parent.stack}\n${this.stack}`;
-  }
-}
-
-class LoggedOutError extends MinervaError {
-  constructor(public message: string, public parent?: Error) {
-    super(message, parent);
-    Object.setPrototypeOf(this, LoggedOutError.prototype);
+    if (parentstack)
+      this.stack = `${parentstack}${errorSeperator}${this.stack}`;
   }
 }
 
 class CredentialsError extends MinervaError {
-  constructor(public message: string, public parent?: Error) {
-    super(message, parent);
+  constructor(public message: string, parentstack?: string) {
+    super(message, parentstack);
     Object.setPrototypeOf(this, CredentialsError.prototype);
   }
 }
-
-class RegistrationsExhaustedError extends MinervaError {
-  constructor(public message: string, public parent?: Error) {
-    super(message, parent);
-    Object.setPrototypeOf(this, RegistrationsExhaustedError.prototype);
+class LoggedOutError extends MinervaError {
+  constructor(public message: string, parentstack?: string) {
+    super(message, parentstack);
+    Object.setPrototypeOf(this, LoggedOutError.prototype);
   }
 }
-
+class RegistrationError extends MinervaError {
+  constructor(public message: string, parentstack?: string) {
+    super(message, parentstack);
+    Object.setPrototypeOf(this, RegistrationError.prototype);
+  }
+}
 class CriticalError extends MinervaError {
-  constructor(public message: string, public parent?: Error) {
-    super(message, parent);
+  constructor(public message: string, parentstack?: string) {
+    super(message, parentstack);
     Object.setPrototypeOf(this, CriticalError.prototype);
   }
 }
@@ -105,9 +104,8 @@ export {
   Counts,
   PDF,
   PDFinfo,
-  MinervaError,
   LoggedOutError,
   CredentialsError,
-  RegistrationsExhaustedError,
+  RegistrationError,
   CriticalError,
 };

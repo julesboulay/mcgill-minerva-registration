@@ -1,6 +1,11 @@
 import puppeteer, { Page, Browser } from "puppeteer";
 import { TimeoutError } from "puppeteer/Errors";
-import { MinervaConfig, CredentialsError, PDF } from "./types";
+import {
+  MinervaConfig,
+  CredentialsError,
+  PDF,
+  RegistrationError,
+} from "./types";
 import { SELECTORS, MINERVA_URL } from "./util";
 import Logger from "./logger";
 
@@ -23,7 +28,15 @@ class MinervaHandler {
    * Init Puppeteer Browser.
    */
   public async init(): Promise<void> {
-    this.browser = await puppeteer.launch({ headless: true });
+    this.browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-accelerated-2d-canvas",
+        "--disable-gpu",
+      ],
+    });
     await this.logger.init();
   }
 
@@ -69,7 +82,7 @@ class MinervaHandler {
     await this.page.click(SELECTORS.LOGIN_BUTTON);
     await this.page.waitForNavigation({ timeout }).catch((error) => {
       if (error instanceof TimeoutError)
-        throw new CredentialsError(`Incorrect Credentials.`, error);
+        throw new CredentialsError(`Incorrect Credentials.`, error.stack);
       throw error;
     });
 
@@ -82,8 +95,6 @@ class MinervaHandler {
 
   /**
    * Traverse to 'Quick Add or Drop Course Sections' on minerva once logged in.
-   *
-   * TODO - catch limit exceeded
    */
   public async traverseToRegistrationPage(): Promise<void> {
     const { timeout, registration } = this.config;
@@ -99,25 +110,11 @@ class MinervaHandler {
 
     await this.page.select(SELECTORS.SELECT_TERM, registration.term);
     await this.page.click(SELECTORS.SUBMIT_TERM);
-
-    /* Check if Registration Attemps Exceded */
-    /* await this.page
-      .waitForSelector(SELECTORS.REGISTRATION_LIMIT_ERROR, { timeout })
-      .catch((error) => {
-        const msg = `Registration attemps exceeded: 
-      ${this.counts.attempts} attempts
-      ${timenow()}`;
-        if (error instanceof TimeoutError) throw new RegistrationsExhaustedError(msg, error);
-        throw error;
-      }); */
-
     await this.page.waitForSelector(SELECTORS.CRN, { timeout });
   }
 
   /**
    * Attempt to register - inserts CRNs and submits changes.
-   *
-   * TODO - support several CRN's
    */
   public async attemptRegistration(): Promise<boolean> {
     const { timeout, registration } = this.config;
@@ -125,21 +122,26 @@ class MinervaHandler {
     await this.page.click(SELECTORS.CRN);
     await this.page.keyboard.type(registration.crn);
 
-    let notFound = true;
-    for (let i = 0; i < 50; i++) {
-      if (!!(await this.page.$(`${SELECTORS.CRN_SUBMIT}(${i})`))) {
-        notFound = false;
-        await this.page.click(`${SELECTORS.CRN_SUBMIT}(${i})`);
-      }
-    }
-    if (notFound) throw new Error(`Can't Find Submit Button.`);
+    const CRN_SUBMIT = await this.findSubmitBtnSelector();
+    await this.page.click(CRN_SUBMIT);
 
-    await this.page.waitForSelector(SELECTORS.CRN, { timeout });
+    await this.page
+      .waitForSelector(SELECTORS.CRN, { timeout })
+      .catch(async (error) => {
+        return this.page
+          .waitForSelector(SELECTORS.REGISTRATION_LIMIT_ERROR, { timeout })
+          .then(() => {
+            throw new RegistrationError(`Registrations Exceeded.`);
+          })
+          .catch(() => {
+            if (error instanceof Error)
+              throw new RegistrationError(`Registration Unrecognized.`);
+            throw error;
+          });
+      });
 
-    const registrationError = !!(await this.page.$(
-      SELECTORS.REGISTRATION_ERRORS
-    ));
-    if (registrationError) return false;
+    const registrationError = await this.page.$(SELECTORS.REGISTRATION_ERRORS);
+    if (!!registrationError) return false;
 
     return true;
   }
@@ -197,6 +199,36 @@ class MinervaHandler {
         break;
       default:
     }
+  }
+
+  /**
+   * Finds the Submit Registration button if Minerva's
+   * Rate-Limiter system changes its ID.
+   */
+  private async findSubmitBtnSelector(): Promise<string> {
+    const waitForSelector = (SELECTOR: string) =>
+      this.page.waitForSelector(SELECTOR);
+
+    return new Promise<string>(async function (resolve, reject) {
+      let resolved: boolean = false;
+      const promises: Promise<void>[] = [];
+
+      for (let i = 0; i < 100; i++) {
+        const CRN_SUBMIT = `${SELECTORS.CRN_SUBMIT}(${i})`;
+        const promise = waitForSelector(CRN_SUBMIT)
+          .then((element) => {
+            if (element && !resolved) {
+              resolved = true;
+              resolve(CRN_SUBMIT);
+            }
+          })
+          .catch((error) => {});
+        promises.push(promise);
+      }
+
+      await Promise.all(promises).catch(reject);
+      if (!resolved) return reject(new Error(`No Submit Registration Found.`));
+    });
   }
 }
 
