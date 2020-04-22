@@ -1,9 +1,14 @@
-import { Config } from "./types";
+import { MinervaConfig } from "./minerva/types";
+import { SendGridConfig } from "./sendgrid/types";
 
 /***********************************************************************
- * CONFIG
+ * TYPES
  */
+type Config = SendGridConfig & MinervaConfig;
 
+/***********************************************************************
+ * CONFIG - Local SetUP
+ */
 const localConfig: Config = {
   /* Minerva credentials */
   credentials: {
@@ -32,7 +37,7 @@ const localConfig: Config = {
   pdfs: `./pdfs`,
 
   timeout: 3 * 1000 /* before navigation timeout (miliseconds) */,
-  timeoutBetweenAttempts: 5 /* between registration attempt (secs) */,
+  timeoutBetweenAttempts: 7 * 60 /* between registration attempt (secs) */,
   timeoutBetweenErrors: 2 /* between errors (mins) */,
   errorsToleratedLimit: 100 /* number of errors tolerable before shuting down */,
 };
@@ -111,4 +116,4 @@ function envConfig(): Config {
   }
 }
 
-export default envConfig;
+export { Config, envConfig };

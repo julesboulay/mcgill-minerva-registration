@@ -2,6 +2,13 @@
  * TYPES
  */
 
+type PDFs = "success" | "error";
+enum Times {
+  Sec = 1000,
+  Min = 60 * 1000,
+  Hr = 60 * 60 * 1000,
+}
+
 type Credentials = {
   readonly username: string;
   readonly password: string;
@@ -13,16 +20,9 @@ type Registration = {
   readonly crn: string;
 };
 
-type SendGrid = {
-  readonly enable: boolean;
-  readonly apiKey: string;
-  readonly email: string;
-};
-
-type Config = {
+type MinervaConfig = {
   readonly credentials: Credentials;
   readonly registration: Registration;
-  readonly sendGrid: SendGrid;
 
   readonly pdfs: string;
 
@@ -33,9 +33,10 @@ type Config = {
 };
 
 type Counts = {
-  errors: number;
   logins: number;
   attempts: number;
+  errors: number;
+  successes: number;
 };
 
 class LoggedOutError extends Error {
@@ -52,20 +53,29 @@ class CredentialsError extends Error {
   }
 }
 
-class AttemptsLimitError extends Error {
+class MinervaError extends Error {
   constructor(public message: string) {
     super();
-    Object.setPrototypeOf(this, AttemptsLimitError.prototype);
+    Object.setPrototypeOf(this, MinervaError.prototype);
+  }
+}
+
+class CriticalError extends Error {
+  constructor(public message: string) {
+    super();
+    Object.setPrototypeOf(this, CriticalError.prototype);
   }
 }
 
 export {
+  PDFs,
+  Times,
   Credentials,
   Registration,
-  SendGrid,
-  Config,
+  MinervaConfig,
   Counts,
   LoggedOutError,
   CredentialsError,
-  AttemptsLimitError,
+  MinervaError,
+  CriticalError,
 };

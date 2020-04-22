@@ -1,7 +1,6 @@
-import { Config, AttemptsLimitError } from "./types";
-import envConfig from "./config";
-import MinervaRegisterer from "./registerer";
-import EmailService from "./sendGrid";
+import { Config, envConfig } from "./config";
+import MinervaRegisterer from "./minerva/registerer";
+import EmailService from "./sendgrid/email";
 
 /**
  * main
@@ -10,6 +9,12 @@ import EmailService from "./sendGrid";
 async function main(): Promise<void> {
   /* Init Config */
   const config: Config = envConfig();
+  console.info({
+    Username: config.credentials.username,
+    Term: config.registration.termStr,
+    CRN: config.registration.crn,
+    TimeBetweenAttemps: `${config.timeoutBetweenAttempts} secs`,
+  });
 
   /* Init EmailService */
   const emailService = new EmailService(config);

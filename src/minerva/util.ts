@@ -1,5 +1,6 @@
 import { TimeoutError } from "puppeteer/Errors";
 import { lookup } from "dns";
+import { Times } from "./types";
 
 /***********************************************************************
  * Constants
@@ -35,26 +36,48 @@ const CMND_LINE = `\n-----------------------------------------------------------
 /***********************************************************************
  * Helpers
  */
-const formatNumber = (n: number, digits: number): string => {
-  let zeros = "";
-  for (let i = 0; i < digits; i++) zeros += "0";
-  return (zeros + n).slice(-digits);
-};
-
-const internetIsConnected = (): Promise<boolean> => {
-  return new Promise<boolean>(function (resolve) {
-    lookup("google.com", function (error, address, family) {
-      if (!!error && error.code == "ENOTFOUND") return resolve(false);
-      resolve(true);
-    });
-  });
-};
 
 const findSelector = (error: TimeoutError): string => {
   const [pre, selector, post] = error.message.split(`"`);
   return SELECTORS_MAP[selector];
 };
 
+/** Sleep Functions */
+const waitforMs = (ms: number): Promise<void> => {
+  return new Promise<void>(function (resolve) {
+    setTimeout(() => {
+      resolve();
+    }, ms);
+  });
+};
+const waitfor = async (value: number, time: Times): Promise<void> => {
+  switch (time) {
+    case Times.Sec:
+      return waitforMs(value * Times.Sec);
+    case Times.Min:
+      return waitforMs(value * Times.Min);
+    case Times.Hr:
+      return waitforMs(value * Times.Hr);
+    default:
+  }
+};
+
+/** Internet Connection Function */
+const internetNotConnected = (): Promise<boolean> => {
+  return new Promise<boolean>(function (resolve) {
+    lookup("google.com", function (error, address, family) {
+      if (!!error && error.code == "ENOTFOUND") return resolve(true);
+      resolve(false);
+    });
+  });
+};
+
+/** Time to String Functions */
+const formatNumber = (n: number, digits: number): string => {
+  let zeros = "";
+  for (let i = 0; i < digits; i++) zeros += "0";
+  return (zeros + n).slice(-digits);
+};
 const timenow = (): string => {
   const f = (n: number): string => formatNumber(n, 2);
   const date = new Date();
@@ -64,22 +87,13 @@ const timenow = (): string => {
   );
 };
 
-const waitfor = async (val: number, vtype: "sec" | "min"): Promise<void> => {
-  return new Promise<void>(function (resolve) {
-    setTimeout(() => {
-      resolve();
-    }, val * (vtype === "sec" ? 1 : 60) * 1000);
-  });
-};
-
 export {
   MINERVA_URL,
   SELECTORS,
   SELECTORS_MAP,
   CMND_LINE,
-  formatNumber,
-  internetIsConnected,
-  findSelector,
   waitfor,
+  internetNotConnected,
+  findSelector,
   timenow,
 };

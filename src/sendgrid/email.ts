@@ -1,18 +1,22 @@
 import sgMail from "@sendgrid/mail";
-import { Config } from "./types";
+import { SendGridConfig } from "./types";
 
 class EmailService {
-  private config: Config;
+  private config: SendGridConfig;
 
   /**
    * Constructor
    * @param config
    */
-  constructor(config: Config) {
+  constructor(config: SendGridConfig) {
     this.config = config;
     sgMail.setApiKey(config.sendGrid.apiKey);
   }
 
+  /**
+   * Send Error Message by Email
+   * @param error
+   */
   public async sendErrorEmail(error: Error): Promise<void> {
     const { enable, email } = this.config.sendGrid;
     if (!enable) return;
@@ -30,6 +34,10 @@ class EmailService {
     console.info(`Error Email sent.`);
   }
 
+  /**
+   * Send Success Message by Email
+   * @param crn
+   */
   public async sendSuccessEmail(crn: string): Promise<void> {
     const { enable, email } = this.config.sendGrid;
     if (!enable) return;
