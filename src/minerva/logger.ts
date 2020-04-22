@@ -50,11 +50,11 @@ const writeFile = async (filepath: string, data: string): Promise<void> => {
   });
 };
 
-class PDFsHandler {
+class Logger {
   private jsonfilepath: string;
 
   constructor(private dirPath: string) {
-    this.jsonfilepath = `${this.dirPath}/pdfs.json`;
+    this.jsonfilepath = `${this.dirPath}/log.json`;
   }
 
   /**
@@ -78,7 +78,7 @@ class PDFsHandler {
    * @param count
    * @param html
    */
-  public async saveHTMLinfo(filepath: string, html: string): Promise<void> {
+  public async saveHTMLfile(filepath: string, html: string): Promise<void> {
     await writeFile(filepath, html);
   }
 
@@ -88,7 +88,7 @@ class PDFsHandler {
    * @param count
    * @param content
    */
-  public async savePDFinfo(
+  public async log(
     ftype: PDF,
     count: number,
     content: string,
@@ -103,8 +103,8 @@ class PDFsHandler {
           stack: content,
           htmlfile,
         });
-        await writeFile;
-        return await writeFile(this.jsonfilepath, content);
+        const errordata = JSON.stringify(info, undefined, 4);
+        return await writeFile(this.jsonfilepath, errordata);
 
       case "success":
         info.registrations.push({
@@ -112,11 +112,12 @@ class PDFsHandler {
           timestamp: timenow(),
           crn: content,
         });
-        return await writeFile(this.jsonfilepath, content);
+        const successdata = JSON.stringify(info, undefined, 4);
+        return await writeFile(this.jsonfilepath, successdata);
 
       default:
     }
   }
 }
 
-export default PDFsHandler;
+export default Logger;

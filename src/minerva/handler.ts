@@ -2,13 +2,13 @@ import puppeteer, { Page, Browser } from "puppeteer";
 import { TimeoutError } from "puppeteer/Errors";
 import { MinervaConfig, CredentialsError, PDF } from "./types";
 import { SELECTORS, MINERVA_URL } from "./util";
-import PDFsHandler from "./pdf";
+import Logger from "./logger";
 
 class MinervaHandler {
   private config: MinervaConfig;
   private browser: Browser;
   private page: Page;
-  private pdfHndlr: PDFsHandler;
+  private logger: Logger;
 
   /**
    * Constructor
@@ -16,7 +16,7 @@ class MinervaHandler {
    */
   constructor(config: MinervaConfig, debug?: boolean) {
     this.config = config;
-    this.pdfHndlr = new PDFsHandler(config.dirPath);
+    this.logger = new Logger(config.dirPath);
   }
 
   /**
@@ -24,7 +24,7 @@ class MinervaHandler {
    */
   public async init(): Promise<void> {
     this.browser = await puppeteer.launch({ headless: true });
-    await this.pdfHndlr.init();
+    await this.logger.init();
   }
 
   /**
@@ -187,13 +187,13 @@ class MinervaHandler {
         const htmlfile = `${dirPath}/error${count}.html`;
         const html = await this.page.content();
         await this.page.pdf({ path: errorpdf, format: "A4" });
-        await this.pdfHndlr.saveHTMLinfo(htmlfile, html);
-        await this.pdfHndlr.savePDFinfo(ftype, count, content, htmlfile);
+        await this.logger.saveHTMLfile(htmlfile, html);
+        await this.logger.log(ftype, count, content, htmlfile);
         break;
       case "success":
         const successpdf = `${dirPath}/success${count}.pdf`;
         await this.page.pdf({ path: successpdf, format: "A4" });
-        await this.pdfHndlr.savePDFinfo(ftype, count, content);
+        await this.logger.log(ftype, count, content);
         break;
       default:
     }
