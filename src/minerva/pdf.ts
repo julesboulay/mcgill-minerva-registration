@@ -61,7 +61,7 @@ class PDFsHandler {
    * Creates PDFs directory, cleans it if exists already, and inits
    * the PDF info file.
    */
-  public async init() {
+  public async init(): Promise<void> {
     await makeDir(this.dirPath);
     await deleteFilesInDir(this.dirPath);
 
@@ -74,7 +74,16 @@ class PDFsHandler {
   }
 
   /**
-   * Save new PDF info.
+   * Save the html of page at error in html file.
+   * @param count
+   * @param html
+   */
+  public async saveHTMLinfo(filepath: string, html: string): Promise<void> {
+    await writeFile(filepath, html);
+  }
+
+  /**
+   * Save new PDF info in json.
    * @param ftype
    * @param count
    * @param content
@@ -82,7 +91,8 @@ class PDFsHandler {
   public async savePDFinfo(
     ftype: PDF,
     count: number,
-    content: string
+    content: string,
+    htmlfile?: string
   ): Promise<void> {
     const info: PDFinfo = await readFile(this.jsonfilepath);
     switch (ftype) {
@@ -91,8 +101,10 @@ class PDFsHandler {
           filename: `${this.dirPath}/error${count}.pdf`,
           timestamp: timenow(),
           stack: content,
+          htmlfile,
         });
-        return await writeFile(this.dirPath, content);
+        await writeFile;
+        return await writeFile(this.jsonfilepath, content);
 
       case "success":
         info.registrations.push({
@@ -100,7 +112,7 @@ class PDFsHandler {
           timestamp: timenow(),
           crn: content,
         });
-        return await writeFile(this.dirPath, content);
+        return await writeFile(this.jsonfilepath, content);
 
       default:
     }

@@ -4,8 +4,10 @@ import EmailService from "./sendgrid";
 
 /**
  * TODO
+ * - handle minerva registrations exhausted error
+ *
+ * BACKLOG
  * - support multiple CRNs
- * - test email service
  */
 
 /**

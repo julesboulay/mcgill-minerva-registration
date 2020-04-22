@@ -2,11 +2,13 @@ import puppeteer, { Page, Browser } from "puppeteer";
 import { TimeoutError } from "puppeteer/Errors";
 import { MinervaConfig, CredentialsError, PDF } from "./types";
 import { SELECTORS, MINERVA_URL } from "./util";
+import PDFsHandler from "./pdf";
 
 class MinervaHandler {
   private config: MinervaConfig;
   private browser: Browser;
   private page: Page;
+  private pdfHndlr: PDFsHandler;
 
   /**
    * Constructor
@@ -14,6 +16,7 @@ class MinervaHandler {
    */
   constructor(config: MinervaConfig, debug?: boolean) {
     this.config = config;
+    this.pdfHndlr = new PDFsHandler(config.dirPath);
   }
 
   /**
@@ -21,18 +24,19 @@ class MinervaHandler {
    */
   public async init(): Promise<void> {
     this.browser = await puppeteer.launch({ headless: true });
+    await this.pdfHndlr.init();
   }
 
   /**
    * Close Puppeteer Browser & Page (if any).
    */
   public async destroy(): Promise<void> {
-    if (this.page) {
-      this.page.close();
+    if (!!this.page) {
+      await this.page.close();
       delete this.page;
     }
-    if (this.browser) {
-      this.browser.close();
+    if (!!this.browser) {
+      await this.browser.close();
       delete this.browser;
     }
   }
@@ -42,7 +46,7 @@ class MinervaHandler {
    */
   public async newMinervaPage(): Promise<void> {
     if (this.page) {
-      this.page.close();
+      await this.page.close();
       delete this.page;
     }
 
@@ -166,23 +170,33 @@ class MinervaHandler {
   }
 
   /**
-   * Save current page as PDF.
+   * Save new PDF file & info.
    * @param ftype
    * @param count
+   * @param content
    */
-  public async savePage(ftype: PDF, count: number): Promise<void> {
+  public async saveState(
+    ftype: PDF,
+    count: number,
+    content: string
+  ): Promise<void> {
     const { dirPath } = this.config;
-    let path: string = ``;
     switch (ftype) {
       case "error":
-        path = `${dirPath}/error${count}.pdf`;
+        const errorpdf = `${dirPath}/error${count}.pdf`;
+        const htmlfile = `${dirPath}/error${count}.html`;
+        const html = await this.page.content();
+        await this.page.pdf({ path: errorpdf, format: "A4" });
+        await this.pdfHndlr.saveHTMLinfo(htmlfile, html);
+        await this.pdfHndlr.savePDFinfo(ftype, count, content, htmlfile);
         break;
       case "success":
-        path = `${dirPath}/success${count}.pdf`;
+        const successpdf = `${dirPath}/success${count}.pdf`;
+        await this.page.pdf({ path: successpdf, format: "A4" });
+        await this.pdfHndlr.savePDFinfo(ftype, count, content);
         break;
       default:
     }
-    if (path) await this.page.pdf({ path, format: "A4" });
   }
 }
 

@@ -42,6 +42,7 @@ type PDF = "success" | "error";
 type PDFinfo = {
   errors: {
     filename: string;
+    htmlfile: string;
     timestamp: string;
     stack: string;
   }[];
