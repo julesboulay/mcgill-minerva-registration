@@ -4,42 +4,77 @@ import { SendGridConfig } from "./sendgrid/types";
 /***********************************************************************
  * TYPES
  */
-type Config = SendGridConfig & MinervaConfig;
+type Config = {
+  sendgrid: SendGridConfig;
+  minerva: MinervaConfig;
+};
 
 /***********************************************************************
  * CONFIG - Local SetUP
  */
 const localConfig: Config = {
-  /* Minerva credentials */
-  credentials: {
-    username: ``,
-    password: ``,
-  },
-
-  registration: {
+  /* Minerva Config */
+  minerva: {
     /**
-     * For 'term' field, you must use browser to inspect the "value" of the
-     * html <option ...> inside the <select ...> for the term selection.
+     * Minerva Credentials
+     * - username: McGill Minerva username
+     * - password: McGill Minerva password
+     */
+    credentials: {
+      username: ``,
+      password: ``,
+    },
+
+    /**
+     * Minerva Registration
+     * - term: must use browser to inspect (described above)
+     * - termStr: Not important, just for displaying in command line
+     * - crn: CRN of course
+     *
+     * NOTE: For 'term' field, you must use a browser to inspect the "value" of the
+     * html <option ...> inside the <select ...> for the term wanted.
      * This would be the <select ...> in the 'Select Term' page in Minerva.
      */
-    term: `` /* Must use browser to inspect */,
-    termStr: `` /* Not important, just for displaying in command line */,
-    crn: `` /* CRN of course */,
+    registration: {
+      term: ``,
+      termStr: ``,
+      crn: ``,
+    },
+
+    /**
+     * - pdfs: Path to pdfs folder where pdfs are to be stored (screenshot of page
+     * upon error and/or screenshot of page upon successfull registration).
+     */
+    pdfs: `./pdfs`,
+
+    /**
+     * - timeout: Before navigation timeout (in miliseconds)
+     * - timeoutBetweenAttempts: Between registration attempts ( in sec)
+     * - timeoutBetweenErrors: Between errors (in min)
+     * - errorsToleratedLimit: Maximum number of errors tolerated
+     *
+     * NOTE: Avoid timeoutBetweenAttempts smaller than 5 mins. Minerva has a rate
+     * limiting system.
+     */
+    timeout: 5 * 1000,
+    timeoutBetweenAttempts: 7 * 60,
+    timeoutBetweenErrors: 2,
+    errorsToleratedLimit: 100,
   },
 
-  sendGrid: {
+  /**
+   * Send Grid Config
+   * - enable: enable email service
+   * - apiKey: Send Grid API key
+   * - toEmail: email to
+   * - fromEmail: email from
+   */
+  sendgrid: {
     enable: true,
     apiKey: ``,
-    email: ``,
+    toEmail: ``,
+    fromEmail: ``,
   },
-
-  /* Path to pdfs folder where you want pdfs to be stored (screenshot of page upon error) */
-  pdfs: `./pdfs`,
-
-  timeout: 3 * 1000 /* before navigation timeout (miliseconds) */,
-  timeoutBetweenAttempts: 7 * 60 /* between registration attempt (secs) */,
-  timeoutBetweenErrors: 2 /* between errors (mins) */,
-  errorsToleratedLimit: 100 /* number of errors tolerable before shuting down */,
 };
 
 /**
@@ -62,56 +97,54 @@ function envConfig(): Config {
         sendGridEmail = "",
       } = process.env;
       return {
-        credentials: {
-          username: username,
-          password: password,
+        minerva: {
+          credentials: {
+            username: username,
+            password: password,
+          },
+          registration: {
+            term: term,
+            termStr: ``,
+            crn: crn,
+          },
+          pdfs: `./pdfs`,
+          timeout: 5 * 1000,
+          timeoutBetweenAttempts: 7 * 60,
+          timeoutBetweenErrors: 2,
+          errorsToleratedLimit: 100,
         },
-
-        registration: {
-          term: term,
-          termStr: ``,
-          crn: crn,
-        },
-
-        sendGrid: {
+        sendgrid: {
           enable: false,
           apiKey: sendGridApiKey,
-          email: sendGridEmail,
+          toEmail: sendGridEmail,
+          fromEmail: ``,
         },
-
-        pdfs: `./pdfs`,
-
-        timeout: 3 * 1000,
-        timeoutBetweenAttempts: 5 * 60,
-        timeoutBetweenErrors: 2,
-        errorsToleratedLimit: 100,
       };
 
     default:
       return {
-        credentials: {
-          username: ``,
-          password: ``,
+        minerva: {
+          credentials: {
+            username: ``,
+            password: ``,
+          },
+          registration: {
+            term: ``,
+            termStr: ``,
+            crn: ``,
+          },
+          pdfs: ``,
+          timeout: 0,
+          timeoutBetweenAttempts: 0,
+          timeoutBetweenErrors: 0,
+          errorsToleratedLimit: 0,
         },
-
-        registration: {
-          term: ``,
-          termStr: ``,
-          crn: ``,
-        },
-
-        sendGrid: {
+        sendgrid: {
           enable: false,
           apiKey: ``,
-          email: ``,
+          toEmail: ``,
+          fromEmail: ``,
         },
-
-        pdfs: `./pdfs`,
-
-        timeout: 0,
-        timeoutBetweenAttempts: 0,
-        timeoutBetweenErrors: 0,
-        errorsToleratedLimit: 0,
       };
   }
 }

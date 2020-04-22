@@ -2,13 +2,9 @@
  * TYPES
  */
 
-type PDFs = "success" | "error";
-enum Times {
-  Sec = 1000,
-  Min = 60 * 1000,
-  Hr = 60 * 60 * 1000,
-}
-
+/**
+ * Types - Minerva Config & Details
+ */
 type Credentials = {
   readonly username: string;
   readonly password: string;
@@ -39,30 +35,51 @@ type Counts = {
   successes: number;
 };
 
-class LoggedOutError extends Error {
-  constructor(public message: string) {
-    super();
+/**
+ * Types - Util
+ */
+type PDFs = "success" | "error";
+enum Times {
+  Sec = 1000,
+  Min = 60 * 1000,
+  Hr = 60 * 60 * 1000,
+}
+
+/**
+ * Types - Errors
+ */
+
+class MinervaError extends Error {
+  constructor(public message: string, public parent?: Error) {
+    super(message);
+    if (parent) this.stack = `${parent.stack}\n${this.stack}`;
+  }
+}
+
+class LoggedOutError extends MinervaError {
+  constructor(public message: string, public parent?: Error) {
+    super(message, parent);
     Object.setPrototypeOf(this, LoggedOutError.prototype);
   }
 }
 
-class CredentialsError extends Error {
-  constructor(public message: string) {
-    super();
+class CredentialsError extends MinervaError {
+  constructor(public message: string, public parent?: Error) {
+    super(message, parent);
     Object.setPrototypeOf(this, CredentialsError.prototype);
   }
 }
 
-class MinervaError extends Error {
-  constructor(public message: string) {
-    super();
-    Object.setPrototypeOf(this, MinervaError.prototype);
+class RegistrationsExhaustedError extends MinervaError {
+  constructor(public message: string, public parent?: Error) {
+    super(message, parent);
+    Object.setPrototypeOf(this, RegistrationsExhaustedError.prototype);
   }
 }
 
-class CriticalError extends Error {
-  constructor(public message: string) {
-    super();
+class CriticalError extends MinervaError {
+  constructor(public message: string, public parent?: Error) {
+    super(message, parent);
     Object.setPrototypeOf(this, CriticalError.prototype);
   }
 }
@@ -74,8 +91,9 @@ export {
   Registration,
   MinervaConfig,
   Counts,
+  MinervaError,
   LoggedOutError,
   CredentialsError,
-  MinervaError,
+  RegistrationsExhaustedError,
   CriticalError,
 };

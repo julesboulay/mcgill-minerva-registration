@@ -20,9 +20,9 @@ class MinervaRegisterer {
    * Constructor.
    * @param config
    */
-  constructor(config: MinervaConfig) {
+  constructor(config: MinervaConfig, debug?: boolean) {
     this.config = config;
-    this.hdlr = new MinervaHandler(config);
+    this.hdlr = new MinervaHandler(config, debug);
     this.counts = {
       logins: 0,
       attempts: 0,
@@ -69,13 +69,13 @@ class MinervaRegisterer {
         /* Handle Critical Error */
         if (error instanceof CredentialsError) {
           await this.hdlr.destroy();
-          throw new CriticalError(`Incorrect Credentials.`);
+          throw new CriticalError(`Incorrect Credentials.`, error);
         } else if (error instanceof MinervaError) {
           await this.hdlr.destroy();
-          throw new CriticalError(`Minerva Internal Error.`);
+          throw new CriticalError(`Minerva Internal Error.`, error);
         } else if (counts.errors > errorsToleratedLimit) {
           await this.hdlr.destroy();
-          throw new CriticalError(`Error Limit Reached.`);
+          throw new CriticalError(`Error Limit Reached.`, error);
         }
 
         return false;
@@ -101,7 +101,7 @@ class MinervaRegisterer {
     await this.hdlr.newMinervaPage();
     await this.hdlr.login();
     await this.hdlr.traverseToRegistrationPage();
-    console.info(`Successfully logged in. #(${++counts.logins})`);
+    console.info(`Successfully logged in. (#${++counts.logins})`);
 
     /* Attemp Registrations at Specified Time (attemps) Interval */
     let successfull: boolean = false;
@@ -112,8 +112,9 @@ class MinervaRegisterer {
       successfull = await this.hdlr
         .attemptRegistration()
         .catch(async (error) => {
+          if (error instanceof CredentialsError) throw error;
           if (await this.hdlr.loggedOut())
-            throw new LoggedOutError(`Logged out.`);
+            throw new LoggedOutError(`Logged Out.`, error);
           throw error;
         });
 
@@ -121,7 +122,7 @@ class MinervaRegisterer {
       if (!successfull) await waitfor(timeoutBetweenAttempts, Times.Sec);
     }
 
-    console.info(`Successfully registered.`);
+    console.info(`Successfully Registered.`);
     await this.hdlr.savePage("success", 1);
     return successfull;
   }

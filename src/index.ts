@@ -1,32 +1,38 @@
 import { Config, envConfig } from "./config";
-import MinervaRegisterer from "./minerva/registerer";
-import EmailService from "./sendgrid/email";
+import MinervaRegisterer from "./minerva";
+import EmailService from "./sendgrid";
+
+/**
+ * TODO
+ * - store json with PDF info - error trace
+ * - support multiple CRNs
+ */
 
 /**
  * main
- * @param config
  */
 async function main(): Promise<void> {
   /* Init Config */
   const config: Config = envConfig();
   console.info({
-    Username: config.credentials.username,
-    Term: config.registration.termStr,
-    CRN: config.registration.crn,
-    TimeBetweenAttemps: `${config.timeoutBetweenAttempts} secs`,
+    Username: config.minerva.credentials.username,
+    Term: config.minerva.registration.termStr,
+    CRN: config.minerva.registration.crn,
+    TimeBetweenAttemps: `${config.minerva.timeoutBetweenAttempts} secs`,
   });
 
-  /* Init EmailService */
-  const emailService = new EmailService(config);
+  /* Init Email Service */
+  const emailService = new EmailService(config.sendgrid);
 
-  /* Init Registerer */
-  const registerer = new MinervaRegisterer(config);
+  /* Init Minerva Registerer */
+  const registerer = new MinervaRegisterer(config.minerva);
 
-  /* Start Segisterer */
+  /* Start Registerer */
   await registerer
     .start()
     .then(async (registered) => {
-      if (registered) await emailService.sendSuccessEmail(``);
+      if (registered)
+        await emailService.sendSuccessEmail(config.minerva.registration.crn);
     })
     .catch(async (error) => {
       if (error instanceof Error) await emailService.sendErrorEmail(error);
@@ -35,6 +41,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  console.log(error);
-  console.log(`Safe exit.`);
+  console.error(error);
+  console.error(`Safe System Exit`);
 });

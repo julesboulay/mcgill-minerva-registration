@@ -12,7 +12,7 @@ class MinervaHandler {
    * Constructor
    * @param config
    */
-  constructor(config: MinervaConfig) {
+  constructor(config: MinervaConfig, debug?: boolean) {
     this.config = config;
   }
 
@@ -65,15 +65,15 @@ class MinervaHandler {
     await this.page.click(SELECTORS.LOGIN_BUTTON);
     await this.page.waitForNavigation({ timeout }).catch((error) => {
       if (error instanceof TimeoutError)
-        throw new CredentialsError(`Incorrect credentials.`);
+        throw new CredentialsError(`Incorrect Credentials.`, error);
       throw error;
     });
 
     const stillInLogginPage = !!(await this.page.$(SELECTORS.USERNAME));
-    if (stillInLogginPage) throw new Error(`Couldn't login.`);
+    if (stillInLogginPage) throw new CredentialsError(`Unsuccessfull Login.`);
 
     const notInMainMenu = !(await this.page.$(SELECTORS.STUDENT_MENU));
-    if (notInMainMenu) throw new Error(`Not in main menu.`);
+    if (notInMainMenu) throw new CredentialsError(`Not in Main Menu.`);
   }
 
   /**
@@ -103,7 +103,7 @@ class MinervaHandler {
         const msg = `Registration attemps exceeded: 
       ${this.counts.attempts} attempts
       ${timenow()}`;
-        if (error instanceof TimeoutError) throw new MinervaError(msg);
+        if (error instanceof TimeoutError) throw new RegistrationsExhaustedError(msg, error);
         throw error;
       }); */
 
@@ -128,7 +128,7 @@ class MinervaHandler {
         await this.page.click(`${SELECTORS.CRN_SUBMIT}(${i})`);
       }
     }
-    if (notFound) throw new Error(`Can't find submit button.`);
+    if (notFound) throw new Error(`Can't Find Submit Button.`);
 
     await this.page.waitForSelector(SELECTORS.CRN, { timeout });
 

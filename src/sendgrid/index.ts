@@ -10,23 +10,24 @@ class EmailService {
    */
   constructor(config: SendGridConfig) {
     this.config = config;
-    sgMail.setApiKey(config.sendGrid.apiKey);
+    sgMail.setApiKey(config.apiKey);
   }
 
   /**
-   * Send Error Message by Email
+   * Send error email.
    * @param error
    */
   public async sendErrorEmail(error: Error): Promise<void> {
-    const { enable, email } = this.config.sendGrid;
+    const { enable, toEmail, fromEmail } = this.config;
     if (!enable) return;
 
+    const text = `${error.stack}`;
     const msg = {
-      to: email,
-      from: `registerer@minerva.com`,
-      subject: `Minerva Registerer Critical Error`,
-      text: error.stack,
-      html: `<strong>${error.stack}</strong>`,
+      to: toEmail,
+      from: fromEmail,
+      subject: `Minerva Registerer: Critical Error`,
+      text,
+      html: `<strong>${text}</strong>`,
     };
 
     const [response] = await sgMail.send(msg);
@@ -35,19 +36,20 @@ class EmailService {
   }
 
   /**
-   * Send Success Message by Email
+   * Send success email.
    * @param crn
    */
   public async sendSuccessEmail(crn: string): Promise<void> {
-    const { enable, email } = this.config.sendGrid;
+    const { enable, toEmail, fromEmail } = this.config;
     if (!enable) return;
 
+    const text = `Succesfully registered to course with CRN: ${crn}`;
     const msg = {
-      to: email,
-      from: `registerer@minerva.com`,
-      subject: `Registered to Course`,
-      text: `Succesfully registerd to course with CRN: ${crn}`,
-      html: `<strong>Succesfully registerd to course with CRN: ${crn}</strong>`,
+      to: toEmail,
+      from: fromEmail,
+      subject: `Minerva Registerer: Registration Success`,
+      text,
+      html: `<strong>${text}</strong>`,
     };
 
     const [response] = await sgMail.send(msg);
