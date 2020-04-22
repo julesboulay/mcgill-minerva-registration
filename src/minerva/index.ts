@@ -85,6 +85,8 @@ class MinervaRegisterer {
       if (!registered) await waitfor(timeoutBetweenErrors, Times.Min);
     }
 
+    console.info(`-- Successfully Registered --`);
+    await this.hdlr.savePage("success", 1);
     return registered;
   }
 
@@ -122,8 +124,6 @@ class MinervaRegisterer {
       if (!successfull) await waitfor(timeoutBetweenAttempts, Times.Sec);
     }
 
-    console.info(`Successfully Registered.`);
-    await this.hdlr.savePage("success", 1);
     return successfull;
   }
 }
