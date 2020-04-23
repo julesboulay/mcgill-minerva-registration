@@ -36,7 +36,6 @@ const CMND_LINE = `\n-----------------------------------------------------------
 /***********************************************************************
  * Helpers
  */
-
 const findSelector = (error: TimeoutError): string => {
   const [pre, selector, post] = error.message.split(`"`);
   return SELECTORS_MAP[selector];

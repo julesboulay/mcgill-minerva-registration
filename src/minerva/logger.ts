@@ -81,7 +81,7 @@ class Logger {
    * @param count
    * @param html
    */
-  public async saveHTMLfile(filepath: string, html: string): Promise<void> {
+  public async saveHTML(filepath: string, html: string): Promise<void> {
     await writeFile(filepath, html);
   }
 
@@ -91,11 +91,10 @@ class Logger {
    * @param count
    * @param content
    */
-  public async log(
+  public async saveState(
     ftype: PDF,
     count: number,
-    content: string,
-    htmlfile?: string
+    content: string
   ): Promise<void> {
     const info: PDFinfo = await readFile(this.jsonfilepath);
 
@@ -105,7 +104,6 @@ class Logger {
           filename: `${this.dirPath}/error${count}.pdf`,
           timestamp: timenow(),
           stack: content,
-          htmlfile,
         });
         const errordata = JSON.stringify(info, undefined, 4);
         await writeFile(this.jsonfilepath, errordata);

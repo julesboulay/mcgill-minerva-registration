@@ -2,14 +2,11 @@ import sgMail from "@sendgrid/mail";
 import { SendGridConfig } from "./types";
 
 class EmailService {
-  private config: SendGridConfig;
-
   /**
    * Constructor
    * @param config
    */
-  constructor(config: SendGridConfig) {
-    this.config = config;
+  constructor(private readonly config: SendGridConfig) {
     sgMail.setApiKey(config.apiKey);
   }
 

@@ -1,29 +1,27 @@
-import { TimeoutError } from "puppeteer/Errors";
 import {
   MinervaConfig,
   LoggedOutError,
   Counts,
-  CredentialsError,
   Times,
   CriticalError,
-  RegistrationError,
   PDF,
 } from "./types";
 import { CMND_LINE, waitfor, internetNotConnected, timenow } from "./util";
 import MinervaHandler from "./handler";
+import Logger from "./logger";
 
 class MinervaRegisterer {
-  private config: MinervaConfig;
-  private counts: Counts;
-  private hdlr: MinervaHandler;
+  private readonly hdlr: MinervaHandler;
+  private readonly logger: Logger;
+  private readonly counts: Counts;
 
   /**
    * Constructor.
    * @param config
    */
-  constructor(config: MinervaConfig, debug?: boolean) {
-    this.config = config;
-    this.hdlr = new MinervaHandler(config, debug);
+  constructor(private config: MinervaConfig) {
+    this.hdlr = new MinervaHandler(config.timeout);
+    this.logger = new Logger(config.dirPath);
     this.counts = {
       logins: 0,
       attempts: 0,
@@ -39,7 +37,7 @@ class MinervaRegisterer {
    */
   public async start(): Promise<boolean> {
     const { counts, config } = this;
-    const { errorsToleratedLimit, timeoutBetweenErrors, registration } = config;
+    const { errorsToleratedLimit, timeoutBetweenErrors } = config;
 
     /* Retry Registration Until Successfull or Error Condtion Met */
     let registered: boolean = false;
@@ -57,37 +55,25 @@ class MinervaRegisterer {
        * Specified Time (errors) Interval
        */
       registered = await this.register().catch(async (error) => {
-        /* Handle Logout & Timeout Error */
+        /* Handle Critical & Logout Error */
         if (error instanceof LoggedOutError) {
           console.error(error);
           return false;
-        } else if (error instanceof TimeoutError) {
-          console.error(error);
-          return false;
+        } else if (error instanceof CriticalError) {
+          await this.saveError(error);
+          throw error;
         }
 
-        /* Handle Critical Error */
-        if (error instanceof CredentialsError) {
-          await this.cleanup("error", ++counts.errors, error);
-          throw new CriticalError(`Incorrect Credentials.`, error.stack);
-        } else if (error instanceof RegistrationError) {
-          await this.cleanup("error", ++counts.errors, error);
-          throw new CriticalError(`Minerva Internal Error.`, error.stack);
-        }
-
-        /* Handle UnExpected Error */
+        /* Handle Unexpected Error */
+        const nerror =
+          error instanceof Error
+            ? error
+            : new Error(`Unexpected Error: ${JSON.stringify(error)}`);
         if (++counts.errors > errorsToleratedLimit) {
-          await this.cleanup(error, counts.errors);
-          throw new CriticalError(`Error Limit Reached.`, error);
-        } else if (error instanceof Error) {
-          console.error(error);
-          await this.cleanup("error", counts.errors, error);
-          return false;
+          await this.saveError(error);
+          throw new CriticalError(`Error Limit Reached.`, nerror);
         } else {
-          console.log(error);
-          const msg = typeof error === "string" ? error : ``;
-          const nerror = new Error(`Unspecified Error: ${msg}`);
-          await this.cleanup("error", counts.errors, nerror);
+          console.error(nerror);
           return false;
         }
       });
@@ -96,7 +82,8 @@ class MinervaRegisterer {
       if (!registered) await waitfor(timeoutBetweenErrors, Times.Min);
     }
 
-    await this.cleanup("success", ++counts.successes);
+    await this.hdlr.destroy();
+    await this.saveState("success", config.registration.crn);
     return registered;
   }
 
@@ -107,13 +94,12 @@ class MinervaRegisterer {
    */
   private async register(): Promise<boolean> {
     const { counts, config } = this;
-    const { timeoutBetweenAttempts } = config;
+    const { timeoutBetweenAttempts, credentials, registration } = config;
 
     /* Login to Minerva & Traverse to Registration Page */
     await this.hdlr.init();
-    await this.hdlr.newMinervaPage();
-    await this.hdlr.login();
-    await this.hdlr.traverseToRegistrationPage();
+    await this.hdlr.login(credentials);
+    await this.hdlr.gotoRegistrationPage(registration.term);
     console.info(`Successfully logged in. (#${++counts.logins})`);
 
     /* Attemp Registrations at Specified Time (attemps) Interval */
@@ -123,9 +109,9 @@ class MinervaRegisterer {
 
       /* Insert & Submit CRN & */
       successfull = await this.hdlr
-        .attemptRegistration()
+        .attemptRegistration(registration.crn)
         .catch(async (error) => {
-          if (error instanceof CredentialsError) throw error;
+          if (error instanceof CriticalError) throw error;
           if (await this.hdlr.loggedOut())
             throw new LoggedOutError(`Logged Out.`, error);
           throw error;
@@ -139,34 +125,35 @@ class MinervaRegisterer {
   }
 
   /**
-   * Print & Save Error (as pdf of current page) as well as Close
-   * Browser and Page if still active.
-   * @param ftype
-   * @param count
+   * Print & Save Error (as pdf of current page).
    * @param error
    */
-  private async cleanup(
-    ftype: PDF,
-    count: number,
-    error?: Error
-  ): Promise<void> {
-    const { crn } = this.config.registration;
+  private async saveError(error: Error): Promise<void> {
+    await this.saveState("error", error.stack);
+  }
+
+  /**
+   * Save new PDF file & info.
+   * @param ftype
+   * @param content
+   */
+  private async saveState(ftype: PDF, content: string): Promise<void> {
+    const { counts, config } = this;
+    const { dirPath } = config;
+    let count: number;
 
     switch (ftype) {
       case "error":
-        if (error instanceof Error)
-          await this.hdlr
-            .saveState("error", count, error.stack)
-            .catch(() => {});
+        await this.hdlr.savePDF(`${dirPath}/error${count}.pdf`);
+        await this.logger.saveState(ftype, count, content);
         break;
 
       case "success":
-        await this.hdlr.saveState("success", count, crn).catch(() => {});
+        await this.hdlr.savePDF(`${dirPath}/success${count}.pdf`);
+        await this.logger.saveState(ftype, count, content);
         break;
       default:
     }
-
-    await this.hdlr.destroy().catch(() => {});
   }
 }
 

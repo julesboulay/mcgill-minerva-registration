@@ -9,13 +9,11 @@ type Credentials = {
   readonly username: string;
   readonly password: string;
 };
-
 type Registration = {
   readonly term: string;
   readonly termStr: "Fall" | "Winter" | "Summer" | ``;
   readonly crn: string;
 };
-
 type MinervaConfig = {
   readonly credentials: Credentials;
   readonly registration: Registration;
@@ -27,7 +25,6 @@ type MinervaConfig = {
   readonly timeoutBetweenErrors: number /* (mins) */;
   readonly errorsToleratedLimit: number;
 };
-
 type Counts = {
   logins: number;
   attempts: number;
@@ -42,7 +39,6 @@ type PDF = "success" | "error";
 type PDFinfo = {
   errors: {
     filename: string;
-    htmlfile: string;
     timestamp: string;
     stack: string;
   }[];
@@ -61,37 +57,22 @@ enum Times {
 /**
  * Types - Errors
  */
-
 const errorSeperator = `\n--- STACK ---\n`;
 class MinervaError extends Error {
-  constructor(public message: string, parentstack?: string) {
+  constructor(public message: string, parent: Error) {
     super(message);
-    if (parentstack)
-      this.stack = `${parentstack}${errorSeperator}${this.stack}`;
-  }
-}
-
-class CredentialsError extends MinervaError {
-  constructor(public message: string, parentstack?: string) {
-    super(message, parentstack);
-    Object.setPrototypeOf(this, CredentialsError.prototype);
+    if (parent) this.stack = `${parent.stack}${errorSeperator}${this.stack}`;
   }
 }
 class LoggedOutError extends MinervaError {
-  constructor(public message: string, parentstack?: string) {
-    super(message, parentstack);
+  constructor(public message: string, error?: Error) {
+    super(message, error);
     Object.setPrototypeOf(this, LoggedOutError.prototype);
   }
 }
-class RegistrationError extends MinervaError {
-  constructor(public message: string, parentstack?: string) {
-    super(message, parentstack);
-    Object.setPrototypeOf(this, RegistrationError.prototype);
-  }
-}
 class CriticalError extends MinervaError {
-  constructor(public message: string, parentstack?: string) {
-    super(message, parentstack);
+  constructor(public message: string, error?: Error) {
+    super(message, error);
     Object.setPrototypeOf(this, CriticalError.prototype);
   }
 }
@@ -104,8 +85,7 @@ export {
   Counts,
   PDF,
   PDFinfo,
+  MinervaError,
   LoggedOutError,
-  CredentialsError,
-  RegistrationError,
   CriticalError,
 };
