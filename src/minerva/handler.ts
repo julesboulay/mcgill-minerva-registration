@@ -125,20 +125,13 @@ class MinervaHandler {
     const CRN_SUBMIT = await this.findSubmitBtnSelector();
     await this.page.click(CRN_SUBMIT);
 
-    await this.page
-      .waitForSelector(SELECTORS.CRN, { timeout })
-      .catch(async (error) => {
-        return this.page
-          .waitForSelector(SELECTORS.REGISTRATION_LIMIT_ERROR, { timeout })
-          .then(() => {
-            throw new RegistrationError(`Registrations Exceeded.`);
-          })
-          .catch(() => {
-            if (error instanceof Error)
-              throw new RegistrationError(`Registration Unrecognized.`);
-            throw error;
-          });
-      });
+    await this.page.waitForSelector(SELECTORS.CRN, { timeout }).catch(() =>
+      this.page
+        .waitForSelector(SELECTORS.REGISTRATION_LIMIT_ERROR, { timeout })
+        .then(() => {
+          throw new RegistrationError(`Registrations Exceeded.`);
+        })
+    );
 
     const registrationError = await this.page.$(SELECTORS.REGISTRATION_ERRORS);
     if (!!registrationError) return false;
@@ -183,6 +176,7 @@ class MinervaHandler {
     content: string
   ): Promise<void> {
     const { dirPath } = this.config;
+
     switch (ftype) {
       case "error":
         const errorpdf = `${dirPath}/error${count}.pdf`;
@@ -192,6 +186,7 @@ class MinervaHandler {
         await this.logger.saveHTMLfile(htmlfile, html);
         await this.logger.log(ftype, count, content, htmlfile);
         break;
+
       case "success":
         const successpdf = `${dirPath}/success${count}.pdf`;
         await this.page.pdf({ path: successpdf, format: "A4" });
@@ -226,8 +221,8 @@ class MinervaHandler {
         promises.push(promise);
       }
 
-      await Promise.all(promises).catch(reject);
-      if (!resolved) return reject(new Error(`No Submit Registration Found.`));
+      await Promise.all(promises).catch(() => {});
+      if (!resolved) reject(new Error(`No Submit Registration Found.`));
     });
   }
 }

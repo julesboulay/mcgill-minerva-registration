@@ -7,6 +7,7 @@ import {
   Times,
   CriticalError,
   RegistrationError,
+  PDF,
 } from "./types";
 import { CMND_LINE, waitfor, internetNotConnected, timenow } from "./util";
 import MinervaHandler from "./handler";
@@ -37,12 +38,10 @@ class MinervaRegisterer {
    * logouts or network interuptions, system is put to sleep for specified time.
    */
   public async start(): Promise<boolean> {
-    console.info(`-- Starting McGill Minerva Registration System --`);
     const { counts, config } = this;
     const { errorsToleratedLimit, timeoutBetweenErrors, registration } = config;
-    await this.hdlr.init();
 
-    /* Retry Registration Until Successfull or Error Limit Reached */
+    /* Retry Registration Until Successfull or Error Condtion Met */
     let registered: boolean = false;
     while (!registered) {
       console.info(CMND_LINE);
@@ -67,31 +66,37 @@ class MinervaRegisterer {
           return false;
         }
 
-        /* Print & Save (as pdf of current page) Error */
-        if (error instanceof Error)
-          await this.hdlr.saveState("error", ++counts.errors, error.stack);
-
         /* Handle Critical Error */
         if (error instanceof CredentialsError) {
-          await this.hdlr.destroy();
+          await this.cleanup("error", ++counts.errors, error);
           throw new CriticalError(`Incorrect Credentials.`, error.stack);
         } else if (error instanceof RegistrationError) {
-          await this.hdlr.destroy();
+          await this.cleanup("error", ++counts.errors, error);
           throw new CriticalError(`Minerva Internal Error.`, error.stack);
-        } else if (counts.errors > errorsToleratedLimit) {
-          await this.hdlr.destroy();
-          throw new CriticalError(`Error Limit Reached.`, error);
         }
 
-        return false;
+        /* Handle UnExpected Error */
+        if (++counts.errors > errorsToleratedLimit) {
+          await this.cleanup(error, counts.errors);
+          throw new CriticalError(`Error Limit Reached.`, error);
+        } else if (error instanceof Error) {
+          console.error(error);
+          await this.cleanup("error", counts.errors, error);
+          return false;
+        } else {
+          console.log(error);
+          const msg = typeof error === "string" ? error : ``;
+          const nerror = new Error(`Unspecified Error: ${msg}`);
+          await this.cleanup("error", counts.errors, nerror);
+          return false;
+        }
       });
 
       /* Sleep in Between Errors */
       if (!registered) await waitfor(timeoutBetweenErrors, Times.Min);
     }
 
-    console.info(`-- Successfully Registered --`);
-    await this.hdlr.saveState("error", ++counts.errors, registration.crn);
+    await this.cleanup("success", ++counts.successes);
     return registered;
   }
 
@@ -105,6 +110,7 @@ class MinervaRegisterer {
     const { timeoutBetweenAttempts } = config;
 
     /* Login to Minerva & Traverse to Registration Page */
+    await this.hdlr.init();
     await this.hdlr.newMinervaPage();
     await this.hdlr.login();
     await this.hdlr.traverseToRegistrationPage();
@@ -130,6 +136,37 @@ class MinervaRegisterer {
     }
 
     return successfull;
+  }
+
+  /**
+   * Print & Save Error (as pdf of current page) as well as Close
+   * Browser and Page if still active.
+   * @param ftype
+   * @param count
+   * @param error
+   */
+  private async cleanup(
+    ftype: PDF,
+    count: number,
+    error?: Error
+  ): Promise<void> {
+    const { crn } = this.config.registration;
+
+    switch (ftype) {
+      case "error":
+        if (error instanceof Error)
+          await this.hdlr
+            .saveState("error", count, error.stack)
+            .catch(() => {});
+        break;
+
+      case "success":
+        await this.hdlr.saveState("success", count, crn).catch(() => {});
+        break;
+      default:
+    }
+
+    await this.hdlr.destroy().catch(() => {});
   }
 }
 
