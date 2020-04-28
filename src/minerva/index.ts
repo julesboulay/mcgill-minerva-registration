@@ -5,13 +5,23 @@ import {
   Times,
   CriticalError,
   PDF,
+  Handler,
 } from "./types";
-import { CMND_LINE, waitfor, internetNotConnected, timenow } from "./util";
-import MinervaHandler from "./handler";
+import {
+  CMND_LINE,
+  waitfor,
+  internetNotConnected,
+  timenow,
+  MINERVA_URL,
+  VSB_URL,
+} from "./util";
+import MinervaHandler from "./minerva";
 import Logger from "./logger";
+import VSBHandler from "./vsb";
 
 class MinervaRegisterer {
-  private readonly hdlr: MinervaHandler;
+  private readonly minerva: MinervaHandler;
+  private readonly vsb: VSBHandler;
   private readonly logger: Logger;
   private readonly counts: Counts;
 
@@ -20,9 +30,11 @@ class MinervaRegisterer {
    * @param config
    */
   constructor(private config: MinervaConfig) {
-    this.hdlr = new MinervaHandler(config.timeout);
+    this.minerva = new MinervaHandler(config.timeout, MINERVA_URL);
+    this.vsb = new VSBHandler(config.timeout, VSB_URL);
     this.logger = new Logger(config.dirPath);
     this.counts = {
+      checks: 0,
       logins: 0,
       attempts: 0,
       errors: 0,
@@ -37,10 +49,12 @@ class MinervaRegisterer {
    */
   public async start(): Promise<boolean> {
     const { counts, config } = this;
-    const { errorsToleratedLimit, timeoutBetweenErrors } = config;
+    const { timeoutBetweenErrors } = config;
+    this.logger.init();
 
     /* Retry Registration Until Successfull or Error Condtion Met */
     let registered: boolean = false;
+    let available: boolean = false;
     while (!registered) {
       console.info(CMND_LINE);
 
@@ -50,41 +64,70 @@ class MinervaRegisterer {
         continue;
       }
 
-      /**
-       * Attempt to Login to Minerva and Register to Course at
-       * Specified Time (errors) Interval
-       */
+      /* Check VSB for Course Availability */
+      available = await this.waitForAvailability().catch(async (error) => {
+        if (error instanceof CriticalError) {
+          await this.saveState("vsb", "error", error.stack);
+          await this.cleanup();
+          throw error;
+        }
+
+        return this.unexpected("vsb", error);
+      });
+      if (!available) continue;
+
+      /* Attempt to Login to Minerva and Register to Course */
       registered = await this.register().catch(async (error) => {
-        /* Handle Critical & Logout Error */
         if (error instanceof LoggedOutError) {
           console.error(error);
           return false;
         } else if (error instanceof CriticalError) {
-          await this.saveError(error);
+          await this.saveState("minerva", "error", error.stack);
+          await this.cleanup();
           throw error;
         }
 
-        /* Handle Unexpected Error */
-        const nerror =
-          error instanceof Error
-            ? error
-            : new Error(`Unexpected Error: ${JSON.stringify(error)}`);
-        if (++counts.errors > errorsToleratedLimit) {
-          await this.saveError(error);
-          throw new CriticalError(`Error Limit Reached.`, nerror);
-        } else {
-          console.error(nerror);
-          return false;
-        }
+        return this.unexpected("minerva", error);
       });
 
       /* Sleep in Between Errors */
       if (!registered) await waitfor(timeoutBetweenErrors, Times.Min);
     }
 
-    await this.hdlr.destroy();
-    await this.saveState("success", config.registration.crn);
+    await this.cleanup();
     return registered;
+  }
+
+  /**
+   * Visits VSB and checks for a course availability by refreshing
+   * page at given time interval until network failure, or unexpected
+   * error.
+   */
+  private async waitForAvailability(): Promise<boolean> {
+    const { config, counts } = this;
+    const { timeoutBetweenRefreshs, registration } = config;
+
+    /* Goto VSB & Select Term & Course */
+    await this.vsb.init();
+    await this.vsb.gotoVSBpage();
+    await this.vsb.selectTerm(registration.term);
+    await this.vsb.selectCourse(registration.crn);
+
+    /* Check Course Availability at Specified Time Interval */
+    let available: boolean = false;
+    while (!available) {
+      console.info(`VSB Attempt: #${++counts.checks} -- ${timenow()}`);
+
+      /* Refresh Page & Check If Not Full & */
+      available = await this.vsb.checkIfAvailableSeat();
+
+      /* Sleep in Between Attempts */
+      if (!available) await waitfor(timeoutBetweenRefreshs, Times.Sec);
+    }
+
+    counts.successes++;
+    await this.saveState("vsb", "success", config.registration.crn);
+    return available;
   }
 
   /**
@@ -97,63 +140,101 @@ class MinervaRegisterer {
     const { timeoutBetweenAttempts, credentials, registration } = config;
 
     /* Login to Minerva & Traverse to Registration Page */
-    await this.hdlr.init();
-    await this.hdlr.login(credentials);
-    await this.hdlr.gotoRegistrationPage(registration.term);
+    await this.minerva.init();
+    await this.minerva.login(credentials);
+    await this.minerva.gotoRegistrationPage(registration.term);
     console.info(`Successfully logged in. (#${++counts.logins})`);
 
     /* Attemp Registrations at Specified Time (attemps) Interval */
-    let successfull: boolean = false;
-    while (!successfull) {
-      console.info(`Attempt: #${++counts.attempts} -- ${timenow()}`);
+    let registered: boolean = false;
+    for (let attempts = 0; attempts < 5; attempts++) {
+      console.info(`REG Attempt: #${++counts.attempts} -- ${timenow()}`);
 
-      /* Insert & Submit CRN & */
-      successfull = await this.hdlr
+      /* Insert & Submit CRN */
+      registered = await this.minerva
         .attemptRegistration(registration.crn)
         .catch(async (error) => {
           if (error instanceof CriticalError) throw error;
-          if (await this.hdlr.loggedOut())
+          if (await this.minerva.loggedOut())
             throw new LoggedOutError(`Logged Out.`, error);
           throw error;
         });
 
       /* Sleep in Between Attempts */
-      if (!successfull) await waitfor(timeoutBetweenAttempts, Times.Sec);
+      if (registered) break;
+      if (!registered && attempts !== 1)
+        await waitfor(timeoutBetweenAttempts, Times.Sec);
     }
 
-    return successfull;
+    counts.successes++;
+    await this.saveState("minerva", "success", config.registration.crn);
+    return registered;
   }
 
   /**
-   * Print & Save Error (as pdf of current page).
+   * Handles unexpected VSB or Minerva Error.
+   * @param page
    * @param error
    */
-  private async saveError(error: Error): Promise<void> {
-    await this.saveState("error", error.stack);
+  private async unexpected(
+    page: "vsb" | "minerva",
+    error: any
+  ): Promise<boolean> {
+    const { counts, config } = this;
+    const nerror =
+      error instanceof Error
+        ? error
+        : new Error(`Unexpected Error: ${JSON.stringify(error)}`);
+    if (++counts.errors > config.errorsToleratedLimit) {
+      await this.saveState(page, "error", nerror.stack);
+      await this.cleanup();
+      throw new CriticalError(`Error Limit Reached.`, nerror);
+    } else {
+      console.error(nerror);
+      await this.saveState(page, "error", nerror.stack);
+      await this.cleanup();
+      return false;
+    }
   }
 
   /**
    * Save new PDF file & info.
+   * @param page
    * @param ftype
    * @param content
    */
-  private async saveState(ftype: PDF, content: string): Promise<void> {
-    const { counts, config } = this;
+  private async saveState(
+    page: "vsb" | "minerva",
+    ftype: PDF,
+    content: string
+  ): Promise<void> {
+    const { config, vsb, minerva, counts } = this;
+    const hndlr: Handler = page === "vsb" ? vsb : minerva;
     const { dirPath } = config;
-    let count: number;
+    let count: number = 0;
 
     switch (ftype) {
       case "error":
-        await this.hdlr.savePDF(`${dirPath}/error${count}.pdf`);
+        count = counts.errors;
+        await hndlr.savePDF(`${dirPath}/error${count}.pdf`);
         await this.logger.saveState(ftype, count, content);
         break;
 
       case "success":
-        await this.hdlr.savePDF(`${dirPath}/success${count}.pdf`);
+        count = counts.successes;
+        await hndlr.savePDF(`${dirPath}/success${count}.pdf`);
         await this.logger.saveState(ftype, count, content);
         break;
       default:
     }
+  }
+
+  /**
+   * Clean up page handlers.
+   */
+  private async cleanup(): Promise<void> {
+    await this.vsb.destroy();
+    await this.minerva.destroy();
   }
 }
 

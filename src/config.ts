@@ -57,8 +57,9 @@ const localConfig: Config = {
      * limiting system.
      */
     timeout: 5 * 1000,
-    timeoutBetweenAttempts: 7 * 60,
-    timeoutBetweenErrors: 2,
+    timeoutBetweenRefreshs: 10,
+    timeoutBetweenAttempts: 1 * 60,
+    timeoutBetweenErrors: 1,
     errorsToleratedLimit: 100,
   },
 
@@ -109,8 +110,9 @@ function envConfig(): Config {
           },
           dirPath: `./pdfs`,
           timeout: 5 * 1000,
-          timeoutBetweenAttempts: 7 * 60,
-          timeoutBetweenErrors: 2,
+          timeoutBetweenRefreshs: 10,
+          timeoutBetweenAttempts: 1 * 60,
+          timeoutBetweenErrors: 1,
           errorsToleratedLimit: 100,
         },
         sendgrid: {
@@ -135,6 +137,7 @@ function envConfig(): Config {
           },
           dirPath: ``,
           timeout: 0,
+          timeoutBetweenRefreshs: 0,
           timeoutBetweenAttempts: 0,
           timeoutBetweenErrors: 0,
           errorsToleratedLimit: 0,

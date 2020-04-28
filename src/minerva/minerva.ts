@@ -1,58 +1,13 @@
-import puppeteer, { Page, Browser } from "puppeteer";
 import { TimeoutError } from "puppeteer/Errors";
-import { Credentials, CriticalError } from "./types";
+import { Credentials, CriticalError, Handler } from "./types";
 import { SELECTORS, MINERVA_URL } from "./util";
 
-class MinervaHandler {
-  private browser: Browser;
-  private page: Page;
-
-  /**
-   * Constructor
-   * @param timeout
-   */
-  constructor(private readonly timeout: number) {}
-
-  /**
-   * Create new Browser & Page (deletes old ones) and goes to
-   * Minerva Login Page.
-   */
-  public async init(): Promise<void> {
-    await this.destroy();
-    this.browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-accelerated-2d-canvas",
-        "--disable-gpu",
-      ],
-    });
-    this.page = await this.browser.newPage();
-    await this.page.goto(MINERVA_URL, { waitUntil: "networkidle2" });
-  }
-
-  /**
-   * Close Puppeteer Browser & Page (if any).
-   */
-  public async destroy(): Promise<void> {
-    if (!!this.page && !!this.page.close) {
-      await this.page.close().catch(() => {});
-      delete this.page;
-    }
-    if (!!this.browser && !!this.browser.close) {
-      await this.browser.close().catch(() => {});
-      delete this.browser;
-    }
-  }
-
+class MinervaHandler extends Handler {
   /**
    * Login to minerva given config credentials.
    * @param credentials
    */
   public async login(creds: Credentials): Promise<void> {
-    const { timeout } = this;
-
     await this.page.click(SELECTORS.USERNAME);
     await this.page.keyboard.type(creds.username);
 
@@ -60,7 +15,7 @@ class MinervaHandler {
     await this.page.keyboard.type(creds.password);
 
     await this.page.click(SELECTORS.LOGIN_BUTTON);
-    await this.page.waitForNavigation({ timeout }).catch((error) => {
+    await this.page.waitForNavigation().catch((error) => {
       if (error instanceof TimeoutError)
         throw new CriticalError(`Incorrect Credentials.`, error);
       throw error;
@@ -78,20 +33,18 @@ class MinervaHandler {
    * @param term
    */
   public async gotoRegistrationPage(term: string): Promise<void> {
-    const { timeout } = this;
-
     await this.page.click(SELECTORS.STUDENT_MENU);
-    await this.page.waitForSelector(SELECTORS.REGISTRATION_MENU, { timeout });
+    await this.page.waitForSelector(SELECTORS.REGISTRATION_MENU);
 
     await this.page.click(SELECTORS.REGISTRATION_MENU);
-    await this.page.waitForSelector(SELECTORS.QUICK_ADD_COURSE), { timeout };
+    await this.page.waitForSelector(SELECTORS.QUICK_ADD_COURSE);
 
     await this.page.click(SELECTORS.QUICK_ADD_COURSE);
-    await this.page.waitForSelector(SELECTORS.SELECT_TERM, { timeout });
+    await this.page.waitForSelector(SELECTORS.SELECT_TERM);
 
     await this.page.select(SELECTORS.SELECT_TERM, term);
     await this.page.click(SELECTORS.SUBMIT_TERM);
-    await this.page.waitForSelector(SELECTORS.CRN, { timeout });
+    await this.page.waitForSelector(SELECTORS.CRN);
   }
 
   /**
@@ -99,27 +52,25 @@ class MinervaHandler {
    * @param crn
    */
   public async attemptRegistration(crn: string): Promise<boolean> {
-    const { timeout } = this;
-
+    /* Insert CRN */
     await this.page.click(SELECTORS.CRN);
     await this.page.keyboard.type(crn);
 
+    /* Submit CRN */
     const CRN_SUBMIT = await this.findSubmitBtnSelector();
     await this.page.click(CRN_SUBMIT);
 
-    /* TODO - test this */
-    await this.page
-      .waitForSelector(SELECTORS.CRN, { timeout })
-      .catch(async (error) => {
-        await this.page
-          .waitForSelector(SELECTORS.REGISTRATION_LIMIT_ERROR, { timeout })
-          .then(() => {
-            throw new CriticalError(`Registrations Exceeded.`);
-          })
-          .catch(() => {
-            throw error;
-          });
-      });
+    /* Check if Registrations not Exceeded */
+    await this.page.waitForSelector(SELECTORS.CRN).catch(async (error) => {
+      await this.page
+        .waitForSelector(SELECTORS.REGISTRATION_LIMIT_ERROR)
+        .then(() => {
+          throw new CriticalError(`Registrations Exceeded.`);
+        })
+        .catch(() => {
+          throw error;
+        });
+    });
 
     const registrationError = await this.page.$(SELECTORS.REGISTRATION_ERRORS);
     if (!!registrationError) return false;
@@ -131,18 +82,17 @@ class MinervaHandler {
    * Checks if user has been logged out from Minerva.
    */
   public async loggedOut(): Promise<boolean> {
-    const { timeout } = this;
     let loggedOut: boolean = false;
 
-    await this.page.waitForNavigation({ timeout }).catch(() => {});
+    await this.page.waitForNavigation().catch(() => {});
     const checkIfbreakedIn = this.page
-      .waitForSelector(SELECTORS.BREAK_IN, { timeout })
+      .waitForSelector(SELECTORS.BREAK_IN)
       .then(() => {
         loggedOut = true;
       })
       .catch(() => {});
     const checkIfInLoginPage = this.page
-      .waitForSelector(SELECTORS.USERNAME, { timeout })
+      .waitForSelector(SELECTORS.USERNAME)
       .then(() => {
         loggedOut = true;
       })
@@ -181,14 +131,6 @@ class MinervaHandler {
       if (!resolved)
         reject(new CriticalError(`Submit Registration Button Not Found.`));
     });
-  }
-
-  /**
-   * Saves PDF of current page at file path.
-   * @param path
-   */
-  public async savePDF(path: string): Promise<void> {
-    await this.page.pdf({ path, format: "A4" });
   }
 }
 

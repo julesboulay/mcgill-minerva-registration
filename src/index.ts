@@ -5,6 +5,7 @@ import EmailService from "./sendgrid";
 /**
  * TODO
  * - support multiple CRNs
+ * - stop attempting upon succcess (bug)
  */
 
 /**

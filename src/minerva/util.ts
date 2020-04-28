@@ -6,7 +6,9 @@ import { Times } from "./types";
  * Constants
  */
 const MINERVA_URL = `https://horizon.mcgill.ca/pban1/twbkwbis.P_WWWLogin`;
+const VSB_URL = `https://vsb.mcgill.ca/vsb/welcome.jsp`;
 const SELECTORS = {
+  /** Minerva Selectors */
   USERNAME: `#mcg_un`,
   PASSWORD: "#mcg_pw",
   LOGIN_BUTTON: `#mcg_un_submit`,
@@ -20,9 +22,18 @@ const SELECTORS = {
 
   CRN: `#crn_id1`,
   CRN_SUBMIT: `body > div.pagebodydiv > form > input[type=submit]:nth-child`,
+  CRN_REGISTERED: `body > div.pagebodydiv > form > table.datadisplaytable > tbody > tr:nth-child(ROW) > td:nth-child(COLUMN) > input[type=hidden]:nth-child(2)`,
   REGISTRATION_ERRORS: `body > div.pagebodydiv > form > table.datadisplaytable`,
-
   REGISTRATION_LIMIT_ERROR: `body > div.pagebodydiv > div.infotextdiv > table > tbody > tr > td:nth-child(2) > span > a:nth-child(2)`,
+
+  /** VSB Selectors */
+  CONTINUE1: `body > div:nth-child(2) > div > input[type=button]`,
+  CONTINUE2: `#page_results > div.full_page_content > div.reg_no_courses > p:nth-child(2) > span.mobileRegularOnly > input`,
+  SELECT_TERM_VSB: `#term_`,
+  SEARCH_COURSE: `#code_number`,
+  SUBMIT_COURSE_SEARCH: `#addCourseButton`,
+  LIST_COURSE_INFO: `#requirements > div:nth-child(INDEX) > div.courseDiv.bc1.bd1`,
+  LIST_COURSE_FULL: `#requirements > div:nth-child(INDEX) > div.courseDiv.bc1.bd1 > div.warningMessageDiv > div > span`,
 };
 const SELECTORS_MAP: { [key: string]: string } = Object.keys(SELECTORS).reduce(
   (result: { [key: string]: string }, key) => {
@@ -88,6 +99,7 @@ const timenow = (): string => {
 
 export {
   MINERVA_URL,
+  VSB_URL,
   SELECTORS,
   SELECTORS_MAP,
   CMND_LINE,

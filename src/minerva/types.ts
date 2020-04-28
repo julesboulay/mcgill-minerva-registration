@@ -1,3 +1,5 @@
+import puppeteer, { Page, Browser } from "puppeteer";
+
 /***********************************************************************
  * TYPES
  */
@@ -21,11 +23,13 @@ type MinervaConfig = {
   readonly dirPath: string;
 
   readonly timeout: number /* navigation timeout (ms) */;
+  readonly timeoutBetweenRefreshs: number /* (secs) */;
   readonly timeoutBetweenAttempts: number /* (secs) */;
   readonly timeoutBetweenErrors: number /* (mins) */;
   readonly errorsToleratedLimit: number;
 };
 type Counts = {
+  checks: number;
   logins: number;
   attempts: number;
   errors: number;
@@ -77,6 +81,62 @@ class CriticalError extends MinervaError {
   }
 }
 
+/**
+ * Puppeteer Handler
+ */
+class Handler {
+  protected browser: Browser;
+  protected page: Page;
+
+  /**
+   * Constructor
+   * @param timeout
+   */
+  constructor(private readonly timeout: number, private readonly url: string) {}
+
+  /**
+   * Create new Browser & Page (deletes old ones) and goes to url.
+   */
+  public async init(): Promise<void> {
+    await this.destroy();
+    this.browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-accelerated-2d-canvas",
+        "--disable-gpu",
+      ],
+    });
+    this.page = await this.browser.newPage();
+    this.page.setDefaultNavigationTimeout(this.timeout);
+    this.page.setDefaultTimeout(this.timeout);
+    await this.page.goto(this.url, { waitUntil: "networkidle2" });
+  }
+
+  /**
+   * Close Puppeteer Browser & Page (if any).
+   */
+  public async destroy(): Promise<void> {
+    if (!!this.page && !!this.page.close) {
+      await this.page.close().catch(() => {});
+      delete this.page;
+    }
+    if (!!this.browser && !!this.browser.close) {
+      await this.browser.close().catch(() => {});
+      delete this.browser;
+    }
+  }
+
+  /**
+   * Saves PDF of current page at file path.
+   * @param path
+   */
+  public async savePDF(path: string): Promise<void> {
+    await this.page.pdf({ path, format: "A4" });
+  }
+}
+
 export {
   Times,
   Credentials,
@@ -88,4 +148,5 @@ export {
   MinervaError,
   LoggedOutError,
   CriticalError,
+  Handler,
 };
