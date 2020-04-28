@@ -1,6 +1,6 @@
 # McGill Minerva Registration System
 
-System that attempts to register for a McGill class through McGill's Minerva at a certain time interval. The system uses a headless browser to crawl through Minerva and attempt registration. Upon registration error, system sleeps for a provided amount of time, and retries again. Upon logout or unknown error, program retries from scratch.
+System that attempts to register for a McGill class through McGill's Minerva at a certain time interval. The system uses a headless browser to crawl through VSB & Minerva to attempt registration. It first verifies availability through VSB at given time interval. Upon availability, logs into Minerva and attempts registration. Upon registration error, system sleeps for a provided amount of time, and retries again. Upon logout or unknown error, program retries from scratch.
 
 ## Requirements
 
