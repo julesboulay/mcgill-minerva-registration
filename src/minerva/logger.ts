@@ -2,8 +2,8 @@ import fs from "fs";
 import { PDF, PDFinfo } from "./types";
 import { timenow } from "./util";
 
-const makeDir = (dirPath: string) => {
-  return new Promise<void>(function (resolve, reject) {
+const makeDir = (dirPath: string) =>
+  new Promise<void>((resolve, reject) =>
     fs.exists(dirPath, (exits) => {
       if (exits) return resolve();
 
@@ -11,43 +11,47 @@ const makeDir = (dirPath: string) => {
         if (error) return reject(error);
         resolve();
       });
-    });
-  });
-};
+    })
+  );
 
 const deleteFilesInDir = (dirPath: string): Promise<void> => {
-  return new Promise<void>(function (resolve, reject) {
-    fs.readdir(dirPath, (error, files) => {
+  const unlink = (file: string) =>
+    new Promise<void>((resolve, reject) =>
+      fs.unlink(`${dirPath}/${file}`, (error) => {
+        if (error) return reject(error);
+        resolve();
+      })
+    );
+
+  return new Promise<void>((resolve, reject) =>
+    fs.readdir(dirPath, async (error, files) => {
       if (error) return reject(error);
 
-      for (const file of files)
-        fs.unlink(`${dirPath}/${file}`, (error) => {
-          if (error) return reject(error);
-        });
+      let promises: Promise<void>[] = [];
+      for (const file of files) promises.push(unlink(file));
 
+      await Promise.all(promises);
       resolve();
-    });
-  });
+    })
+  );
 };
 
-const readFile = (filepath: string): Promise<PDFinfo> => {
-  return new Promise<PDFinfo>(function (resolve, reject) {
+const readFile = (filepath: string): Promise<PDFinfo> =>
+  new Promise<PDFinfo>((resolve, reject) =>
     fs.readFile(filepath, (error, data) => {
       if (error) return reject(error);
       const info: PDFinfo = JSON.parse(data.toString());
       resolve(info);
-    });
-  });
-};
+    })
+  );
 
-const writeFile = (filepath: string, data: string): Promise<void> => {
-  return new Promise<void>(function (resolve, reject) {
+const writeFile = (filepath: string, data: string): Promise<void> =>
+  new Promise<void>((resolve, reject) =>
     fs.writeFile(filepath, data, (error) => {
       if (error) return reject(error);
       resolve();
-    });
-  });
-};
+    })
+  );
 
 class Logger {
   private jsonfilepath: string;
@@ -77,7 +81,7 @@ class Logger {
    * @param count
    * @param html
    */
-  public async saveHTMLfile(filepath: string, html: string): Promise<void> {
+  public async saveHTML(filepath: string, html: string): Promise<void> {
     await writeFile(filepath, html);
   }
 
@@ -87,23 +91,23 @@ class Logger {
    * @param count
    * @param content
    */
-  public async log(
+  public async saveState(
     ftype: PDF,
     count: number,
-    content: string,
-    htmlfile?: string
+    content: string
   ): Promise<void> {
     const info: PDFinfo = await readFile(this.jsonfilepath);
+
     switch (ftype) {
       case "error":
         info.errors.push({
           filename: `${this.dirPath}/error${count}.pdf`,
           timestamp: timenow(),
           stack: content,
-          htmlfile,
         });
         const errordata = JSON.stringify(info, undefined, 4);
         await writeFile(this.jsonfilepath, errordata);
+        break;
 
       case "success":
         info.registrations.push({

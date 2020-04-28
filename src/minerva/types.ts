@@ -1,3 +1,5 @@
+import puppeteer, { Page, Browser } from "puppeteer";
+
 /***********************************************************************
  * TYPES
  */
@@ -9,13 +11,11 @@ type Credentials = {
   readonly username: string;
   readonly password: string;
 };
-
 type Registration = {
   readonly term: string;
   readonly termStr: "Fall" | "Winter" | "Summer" | ``;
   readonly crn: string;
 };
-
 type MinervaConfig = {
   readonly credentials: Credentials;
   readonly registration: Registration;
@@ -23,12 +23,13 @@ type MinervaConfig = {
   readonly dirPath: string;
 
   readonly timeout: number /* navigation timeout (ms) */;
+  readonly timeoutBetweenRefreshs: number /* (secs) */;
   readonly timeoutBetweenAttempts: number /* (secs) */;
   readonly timeoutBetweenErrors: number /* (mins) */;
   readonly errorsToleratedLimit: number;
 };
-
 type Counts = {
+  checks: number;
   logins: number;
   attempts: number;
   errors: number;
@@ -42,7 +43,6 @@ type PDF = "success" | "error";
 type PDFinfo = {
   errors: {
     filename: string;
-    htmlfile: string;
     timestamp: string;
     stack: string;
   }[];
@@ -61,38 +61,79 @@ enum Times {
 /**
  * Types - Errors
  */
-
 const errorSeperator = `\n--- STACK ---\n`;
 class MinervaError extends Error {
-  constructor(public message: string, parentstack?: string) {
+  constructor(public message: string, parent: Error) {
     super(message);
-    if (parentstack)
-      this.stack = `${parentstack}${errorSeperator}${this.stack}`;
-  }
-}
-
-class CredentialsError extends MinervaError {
-  constructor(public message: string, parentstack?: string) {
-    super(message, parentstack);
-    Object.setPrototypeOf(this, CredentialsError.prototype);
+    if (parent) this.stack = `${parent.stack}${errorSeperator}${this.stack}`;
   }
 }
 class LoggedOutError extends MinervaError {
-  constructor(public message: string, parentstack?: string) {
-    super(message, parentstack);
+  constructor(public message: string, error?: Error) {
+    super(message, error);
     Object.setPrototypeOf(this, LoggedOutError.prototype);
   }
 }
-class RegistrationError extends MinervaError {
-  constructor(public message: string, parentstack?: string) {
-    super(message, parentstack);
-    Object.setPrototypeOf(this, RegistrationError.prototype);
+class CriticalError extends MinervaError {
+  constructor(public message: string, error?: Error) {
+    super(message, error);
+    Object.setPrototypeOf(this, CriticalError.prototype);
   }
 }
-class CriticalError extends MinervaError {
-  constructor(public message: string, parentstack?: string) {
-    super(message, parentstack);
-    Object.setPrototypeOf(this, CriticalError.prototype);
+
+/**
+ * Puppeteer Handler
+ */
+class Handler {
+  protected browser: Browser;
+  protected page: Page;
+
+  /**
+   * Constructor
+   * @param timeout
+   */
+  constructor(private readonly timeout: number, private readonly url: string) {}
+
+  /**
+   * Create new Browser & Page (deletes old ones) and goes to url.
+   */
+  public async init(): Promise<void> {
+    await this.destroy();
+    this.browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-accelerated-2d-canvas",
+        "--disable-gpu",
+      ],
+    });
+    this.page = await this.browser.newPage();
+    this.page.setDefaultNavigationTimeout(this.timeout);
+    this.page.setDefaultTimeout(this.timeout);
+    await this.page.goto(this.url, { waitUntil: "networkidle2" });
+  }
+
+  /**
+   * Close Puppeteer Browser & Page (if any).
+   */
+  public async destroy(): Promise<void> {
+    if (!!this.page && !!this.page.close) {
+      await this.page.close().catch(() => {});
+      delete this.page;
+    }
+    if (!!this.browser && !!this.browser.close) {
+      await this.browser.close().catch(() => {});
+      delete this.browser;
+    }
+  }
+
+  /**
+   * Saves PDF of current page at file path.
+   * @param path
+   */
+  public async savePDF(path: string): Promise<void> {
+    await this.page.pdf({ path, format: "A4" });
   }
 }
 
@@ -104,8 +145,8 @@ export {
   Counts,
   PDF,
   PDFinfo,
+  MinervaError,
   LoggedOutError,
-  CredentialsError,
-  RegistrationError,
   CriticalError,
+  Handler,
 };
